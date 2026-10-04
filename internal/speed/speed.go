@@ -170,7 +170,15 @@ func (c *Client) session(ctx context.Context, base string) (string, error) {
 	return key, nil
 }
 
-func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (result Result, err error) {
+func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (Result, error) {
+	return c.run(ctx, o, nil, progress)
+}
+
+// RunSelected uses a server already returned by Match, including servers absent from the snapshot.
+func (c *Client) RunSelected(ctx context.Context, o Options, selected catalog.Server, progress func(Progress)) (Result, error) {
+	return c.run(ctx, o, &selected, progress)
+}
+func (c *Client) run(ctx context.Context, o Options, selected *catalog.Server, progress func(Progress)) (result Result, err error) {
 	defer func() {
 		if err != nil {
 			err = PublicError(err)
@@ -181,7 +189,9 @@ func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (r
 	}
 	result.Time = time.Now()
 	result.Path = "device-to-carrier"
-	if o.Auto {
+	if selected != nil {
+		result.Server = *selected
+	} else if o.Auto {
 		result.Server, err = c.Match(ctx, o.Match, progress)
 	} else {
 		result.Server, err = catalog.Find(o.ServerID)

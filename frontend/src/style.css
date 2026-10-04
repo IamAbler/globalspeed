@@ -73,3 +73,14 @@ html,body,#root{height:100%;overflow:hidden}
 @media(max-width:600px) and (max-height:680px){
  .ready-state{padding-top:20px}.ready-state .test-stage{width:170px;height:170px;margin:30px auto 24px}.connection-mode{margin-top:14px}.result-state .test-stage{margin:12px auto 8px}.result-state .connection-info{margin-top:12px}
 }
+
+/* Server first, local network second, as in the desktop speed test app. */
+.connection-info{display:flex;flex-direction:column;gap:14px;max-width:390px;margin-top:18px}
+.connection-info .server-info,.connection-info .device-info{display:flex;flex-direction:row;align-items:center;text-align:left;border:0;padding:0;gap:14px;min-height:54px}
+.connection-info .server-info>svg,.connection-info .device-info>svg{width:26px;height:26px;flex-shrink:0;color:var(--gs-muted)}
+.network-details{flex:1;min-width:0}.connection-info .network-details strong{font-size:14px;margin:3px 0;overflow-wrap:anywhere}.connection-info .network-details small{font-size:10px;overflow-wrap:anywhere;line-height:1.45}.connection-info button{color:var(--gs-accent)!important;font-size:11px!important;min-width:0!important;flex-shrink:0;padding:2px 0!important}
+.connection-mode{margin-top:14px}.running-state .connection-info{margin-top:12px;gap:10px}.running-state .test-stage{--gauge-width:clamp(245px,calc((100dvh - 385px)*1.12),380px)}
+.ready-state .test-stage{margin-top:32px;margin-bottom:24px}
+@media(max-height:680px){.connection-info{gap:9px;margin-top:14px}.connection-info .server-info,.connection-info .device-info{min-height:46px}.connection-info .network-details strong{font-size:13px}.ready-state .test-stage{width:150px;height:150px;margin:22px auto 16px}.running-state .test-stage{--gauge-width:clamp(210px,calc((100dvh - 370px)*1.12),330px)}.running-state .dial-reading strong{font-size:26px}.result-state .test-stage{margin:10px auto 6px}.connection-mode{margin-top:10px}}
+@media(max-height:560px){.ready-state{padding-top:8px}.ready-state .test-stage{width:130px;height:130px;margin:12px auto}.connection-info{gap:6px;margin-top:10px}.connection-info .server-info,.connection-info .device-info{min-height:42px}.connection-mode{margin-top:6px}.result-state .test-stage{width:72px;height:72px;margin:6px auto}.result-state .connection-info{margin-top:8px}}
+@media(max-height:680px){.running-state .dial-reading{top:62%}}

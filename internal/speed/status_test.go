@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"globalspeed/internal/catalog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -47,5 +48,15 @@ func TestSessionHTTPFailureIsNotRetried(t *testing.T) {
 	_, err := NewClient().session(context.Background(), server.URL)
 	if PublicError(err).Code != 131 || attempts != 1 {
 		t.Fatalf("attempts=%d err=%v", attempts, err)
+	}
+}
+
+func TestRunSelectedUsesMatchedServerOutsideCatalog(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	selected := catalog.Server{ID: "new-match-only", IP: "203.0.113.8", Port: "65499", Name: "Matched server"}
+	result, err := NewClient().RunSelected(ctx, Options{Auto: true, DurationSeconds: 1, Connections: 1, MaxMiB: 1}, selected, nil)
+	if result.Server.ID != selected.ID || PublicError(err).Code != 990 {
+		t.Fatalf("server=%+v err=%v", result.Server, err)
 	}
 }

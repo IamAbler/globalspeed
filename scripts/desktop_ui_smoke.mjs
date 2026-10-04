@@ -13,8 +13,8 @@ try{
   const emit=(name,data)=>listeners[name]?.(data);
   window.__emit=emit;window.__pauseMock=()=>clearInterval(timer);
   window.runtime={EventsOn:(name,handler)=>{listeners[name]=handler},EventsOff:name=>delete listeners[name]};
-  window.go={main:{App:{ListServers:async()=>servers,History:async()=>records,StartSpeed:async options=>{
-   window.__options=options;if(options.auto){options.serverId='1503';emit('speed:progress',{phase:'selected',server:servers.find(s=>s.hostid==='1503')})};emit('speed:progress',{phase:'session',mbps:0,bytes:0,elapsedMs:0,ping:{method:'icmp',averageMs:29.28,jitterMs:1.4,status:0,sent:10,received:10,packetLossPct:0}});n=0;clearInterval(timer);timer=setInterval(()=>{
+  window.go={main:{App:{NetworkInfo:async()=>({ip:'203.0.113.9',operator:'电信',province:'江苏',city:'南京',location:'中国 · 江苏 · 南京'}),SelectServer:async options=>{window.__matchOptions=options;window.__matchCount=(window.__matchCount||0)+1;return servers.find(s=>s.hostid==='1503')},ListServers:async()=>servers,History:async()=>records,StartSpeed:async options=>{
+   window.__options=options;window.__matchesAtStart=window.__matchCount;emit('speed:progress',{phase:'session',mbps:0,bytes:0,elapsedMs:0,ping:{method:'icmp',averageMs:29.28,jitterMs:1.4,status:0,sent:10,received:10,packetLossPct:0}});n=0;clearInterval(timer);timer=setInterval(()=>{
     n++;emit('speed:progress',{phase:n<5?'download':'upload',mbps:n*12,bytes:n*1024,elapsedMs:n*80});
     if(n===10){clearInterval(timer);const r={time:new Date().toISOString(),server:servers.find(s=>s.hostid===options.serverId),path:'device-to-carrier',tcpMedianMs:.5,tcpJitterMs:.1,ping:{method:'icmp',averageMs:29.28,jitterMs:1.4,status:0,sent:10,received:10,packetLossPct:0},download:{mbps:92,bytes:1000000,elapsedMs:300,budgetReached:false},upload:{mbps:81,bytes:1000000,elapsedMs:400,budgetReached:false},released:true};records=[r,...records];emit('speed:result',r)}
    },80);
@@ -29,6 +29,8 @@ try{
  };
  for(const viewport of [{width:480,height:640},{width:520,height:720},{width:800,height:520},{width:1280,height:720}]){await page.setViewportSize(viewport);await checkFits()}
  await page.setViewportSize({width:520,height:720});
+ assert.equal(await page.locator('.server-info strong').innerText(),'南京电信');assert.ok((await page.locator('.public-ip').innerText()).includes('203.0.113.9'));
+ const blocks=await page.evaluate(()=>({server:document.querySelector('.server-info').getBoundingClientRect().top,device:document.querySelector('.device-info').getBoundingClientRect().top}));assert.ok(blocks.device>blocks.server);assert.ok(await page.evaluate(()=>window.__matchCount>=1));
  await page.screenshot({path:'docs/desktop-preview.png',fullPage:true});
  await page.getByRole('button',{name:'更换节点',exact:true}).click();
  await page.getByRole('combobox',{name:'省份',exact:true}).selectOption('江苏');
@@ -79,6 +81,7 @@ try{
  await page.getByRole('dialog').waitFor({state:'hidden'});
  await page.evaluate(()=>window.__emit('speed:error',{code:122,message:'云服务器响应错误'}));
  await page.getByRole('button',{name:'重试',exact:true}).click();
- await page.getByText('测试完成 · 会话已释放',{exact:true}).waitFor();
+ await page.locator('.status').getByText('准备就绪',{exact:true}).waitFor();await page.getByRole('button',{name:'开始测速',exact:true}).click();
+ await page.getByText('测试完成 · 会话已释放',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__matchCount),await page.evaluate(()=>window.__matchesAtStart));
  assert.deepEqual(errors,[]);console.log('Desktop UI passed: Fluent rendering, node filters, Go options and events, history, search, stop, theme, speedometer smoothing, segmented scale, 200 ms easing, 500 ms return, entry/exit morph, no curve.');
 }finally{await browser.close()}
