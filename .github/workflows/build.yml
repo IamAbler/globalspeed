@@ -1,0 +1,42 @@
+name: Native builds
+on: [push, workflow_dispatch]
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - run: go test -race ./...
+      - run: python3 scripts/build_cli.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-windows-linux-darwin
+          path: build/bin/
+  desktop:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-24.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config build-essential
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+      - if: runner.os != 'Linux'
+        run: wails build -tags desktop
+      - if: runner.os == 'Linux'
+        run: wails build -tags desktop,webkit2_41
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}-${{ runner.arch }}
+          path: build/bin/

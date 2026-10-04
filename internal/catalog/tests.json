@@ -1,0 +1,592 @@
+[
+  {
+    "id": "1",
+    "name": "接入网测速",
+    "items": []
+  },
+  {
+    "id": "2",
+    "name": "网页性能",
+    "items": [
+      {
+        "id": "1",
+        "name": "百度",
+        "catg": "搜索类",
+        "target": "https://www.baidu.com/"
+      },
+      {
+        "id": "2",
+        "name": "Bing",
+        "catg": "搜索类",
+        "target": "https://cn.bing.com/"
+      },
+      {
+        "id": "3",
+        "name": "淘宝",
+        "catg": "生活类",
+        "target": "https://www.taobao.com/"
+      },
+      {
+        "id": "4",
+        "name": "京东商城",
+        "catg": "生活类",
+        "target": "https://www.jd.com/"
+      },
+      {
+        "id": "5",
+        "name": "拼多多",
+        "catg": "生活类",
+        "target": "https://www.pinduoduo.com/"
+      },
+      {
+        "id": "6",
+        "name": "亚马逊",
+        "catg": "生活类",
+        "target": "https://www.amazon.cn/"
+      },
+      {
+        "id": "7",
+        "name": "新浪",
+        "catg": "资讯类",
+        "target": "https://www.sina.com.cn/"
+      },
+      {
+        "id": "8",
+        "name": "腾讯",
+        "catg": "资讯类",
+        "target": "https://www.qq.com/"
+      },
+      {
+        "id": "9",
+        "name": "搜狐",
+        "catg": "资讯类",
+        "target": "https://www.sohu.com/"
+      },
+      {
+        "id": "10",
+        "name": "今日头条",
+        "catg": "资讯类",
+        "target": "https://www.toutiao.com/"
+      },
+      {
+        "id": "11",
+        "name": "阿里云",
+        "catg": "科技类",
+        "target": "https://www.aliyun.com/"
+      },
+      {
+        "id": "12",
+        "name": "腾讯云",
+        "catg": "科技类",
+        "target": "https://cloud.tencent.com/"
+      },
+      {
+        "id": "13",
+        "name": "斗鱼直播",
+        "catg": "直播类",
+        "target": "https://www.douyu.com/"
+      },
+      {
+        "id": "14",
+        "name": "YY直播",
+        "catg": "直播类",
+        "target": "https://www.yy.com/"
+      },
+      {
+        "id": "15",
+        "name": "虎牙直播",
+        "catg": "直播类",
+        "target": "https://www.huya.com/"
+      },
+      {
+        "id": "16",
+        "name": "新浪微博",
+        "catg": "社交类",
+        "target": "https://www.weibo.com/"
+      },
+      {
+        "id": "18",
+        "name": "知乎",
+        "catg": "社交类",
+        "target": "https://www.zhihu.com/"
+      },
+      {
+        "id": "19",
+        "name": "豆瓣",
+        "catg": "社交类",
+        "target": "https://www.douban.com/"
+      },
+      {
+        "id": "20",
+        "name": "网易公开课",
+        "catg": "网课类",
+        "target": "https://open.163.com/"
+      },
+      {
+        "id": "21",
+        "name": "国家中小学智慧教育平台",
+        "icon": "国家中小学平台",
+        "catg": "网课类",
+        "target": "https://www.zxx.edu.cn/"
+      },
+      {
+        "id": "22",
+        "name": "人民网",
+        "catg": "新闻类",
+        "target": "https://www.people.com.cn/"
+      },
+      {
+        "id": "23",
+        "name": "新华网",
+        "catg": "新闻类",
+        "target": "http://www.xinhuanet.com/"
+      },
+      {
+        "id": "24",
+        "name": "环球网",
+        "catg": "新闻类",
+        "target": "https://www.huanqiu.com/"
+      },
+      {
+        "id": "25",
+        "name": "央视网",
+        "catg": "新闻类",
+        "target": "https://www.cctv.com/"
+      },
+      {
+        "id": "26",
+        "name": "EI",
+        "catg": "国际组织",
+        "target": "https://www.engineeringvillage.com/"
+      },
+      {
+        "id": "27",
+        "name": "IEEE",
+        "catg": "国际组织",
+        "target": "https://www.ieee.org"
+      },
+      {
+        "id": "28",
+        "name": "ITU",
+        "catg": "国际组织",
+        "target": "https://www.itu.int/"
+      },
+      {
+        "id": "29",
+        "name": "SCI",
+        "catg": "国际组织",
+        "target": "https://www.sci.com/"
+      },
+      {
+        "id": "31",
+        "name": "Lazada",
+        "catg": "跨境电商",
+        "target": "https://www.lazada.com.my/"
+      },
+      {
+        "id": "32",
+        "name": "Shopee",
+        "catg": "跨境电商",
+        "target": "https://shopee.com/"
+      },
+      {
+        "id": "33",
+        "name": "eBay",
+        "catg": "跨境电商",
+        "target": "https://www.ebay.com/"
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "name": "视频测速",
+    "items": [
+      {
+        "id": "1",
+        "name": "爱奇艺",
+        "duration": "5874",
+        "quality": "4",
+        "height": "540",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "web_parse": "0",
+        "target": "https://www.iqiyi.com/v_19rzeuzcd4.html|hot"
+      },
+      {
+        "id": "2",
+        "name": "腾讯",
+        "duration": "6333",
+        "quality": "3",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "prio_fmt": "MP4",
+        "web_parse": "0",
+        "target": "https://v.qq.com/x/cover/mzc00200wl6js55/o0042uh3rfa.html|hot"
+      },
+      {
+        "id": "3",
+        "name": "优酷",
+        "duration": "5951",
+        "quality": "3",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "prio_fmt": "FLV",
+        "web_parse": "0",
+        "target": "https://v.youku.com/v_show/id_XNTIwMjAyODUxNg==.html|hot"
+      },
+      {
+        "id": "4",
+        "name": "哔哩哔哩弹幕视频网",
+        "icon": "哔哩哔哩",
+        "duration": "1871",
+        "quality": "2",
+        "height": "540",
+        "bitrate": "800000",
+        "platform": "0",
+        "real_quality": "2",
+        "web_parse": "0",
+        "target": "https://www.bilibili.com/bangumi/play/ss35195|hot"
+      },
+      {
+        "id": "6",
+        "name": "搜狐",
+        "duration": "300",
+        "quality": "3",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "1",
+        "real_quality": "3",
+        "web_parse": "0",
+        "target": "https://tv.sohu.com/v/MjAyMjA2MTYvbjYwMTE5MDc4NC5zaHRtbA==.html|hot"
+      },
+      {
+        "id": "7",
+        "name": "PPTV",
+        "duration": "162",
+        "quality": "3",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "web_parse": "0",
+        "target": "https://v.pptv.com/show/zrbMSictUTozvbdU.html|hot"
+      },
+      {
+        "id": "8",
+        "name": "央视网",
+        "duration": "300",
+        "quality": "3",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "web_parse": "0",
+        "target": "https://tv.cctv.com/2022/02/12/VIDE7nyAuNwb2siDLYLjJigm220212.shtml|hot"
+      },
+      {
+        "id": "9",
+        "name": "凤凰",
+        "duration": "320",
+        "quality": "4",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "web_parse": "0",
+        "target": "https://v.ifeng.com/c/8DJ1WOQ3e4r|hot"
+      },
+      {
+        "id": "10",
+        "name": "西瓜视频",
+        "duration": "359",
+        "quality": "3",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "web_parse": "0",
+        "target": "https://www.ixigua.com/7067856027621949964|hot"
+      },
+      {
+        "id": "11",
+        "name": "抖音",
+        "duration": "105",
+        "quality": "2",
+        "height": "720",
+        "bitrate": "1200000",
+        "platform": "0",
+        "real_quality": "3",
+        "web_parse": "0",
+        "target": "https://www.douyin.com/vsdetail/7094530619832865799|hot"
+      }
+    ]
+  },
+  {
+    "id": "4",
+    "name": "文件下载",
+    "items": [
+      {
+        "id": "1",
+        "name": "微信电脑版",
+        "icon": "微信",
+        "size": "113M",
+        "target": "http://dldir1.qq.com/weixin/Windows/WeChatSetup.exe"
+      },
+      {
+        "id": "2",
+        "name": "腾讯会议",
+        "size": "85M",
+        "target": "http://down.qq.com/download/TencentMeeting_0300000000_1.5.8.448.publish.exe"
+      },
+      {
+        "id": "3",
+        "name": "美团",
+        "size": "80M",
+        "target": "http://v.meituan.net/mobile/app/Android/group-1100210206__aarch32_0-imeituan.apk/imeituan"
+      },
+      {
+        "id": "4",
+        "name": "抖音",
+        "size": "117M",
+        "target": "http://ugapk.com/mGFG"
+      },
+      {
+        "id": "5",
+        "name": "网易云音乐",
+        "icon": "网易云",
+        "size": "39M",
+        "target": "http://music.163.com/api/pc/package/download/latest"
+      },
+      {
+        "id": "6",
+        "name": "爱奇艺",
+        "size": "44M",
+        "target": "http://dl-static.iqiyi.com/hz/IQIYIsetup_z44@xt001.exe"
+      },
+      {
+        "id": "7",
+        "name": "360安全卫士",
+        "icon": "安全卫士",
+        "size": "89M",
+        "target": "http://down.360safe.com/setup.exe"
+      },
+      {
+        "id": "8",
+        "name": "腾讯QQ",
+        "size": "82M",
+        "target": "http://dldir1.qq.com/qqfile/qq/PCQQ9.7.3/QQ9.7.3.28946.exe"
+      }
+    ]
+  },
+  {
+    "id": "5",
+    "name": "ping",
+    "items": [
+      {
+        "id": "1",
+        "name": "103.151.5.223",
+        "zhou": "中国香港",
+        "target": "103.151.5.223"
+      },
+      {
+        "id": "2",
+        "name": "103.103.128.240",
+        "zhou": "中国台湾",
+        "target": "103.103.128.240"
+      },
+      {
+        "id": "3",
+        "name": "www.dsf.gov.mo",
+        "zhou": "中国澳门",
+        "target": "www.dsf.gov.mo"
+      },
+      {
+        "id": "4",
+        "name": "219.141.150.166",
+        "zhou": "亚洲",
+        "target": "219.141.150.166"
+      },
+      {
+        "id": "5",
+        "name": "8.208.8.126",
+        "zhou": "欧洲",
+        "target": "8.208.8.126"
+      },
+      {
+        "id": "6",
+        "name": "159.138.163.8",
+        "zhou": "非洲",
+        "target": "159.138.163.8"
+      },
+      {
+        "id": "7",
+        "name": "45.61.49.154",
+        "zhou": "北美洲",
+        "target": "45.61.49.154"
+      },
+      {
+        "id": "8",
+        "name": "172.107.207.220",
+        "zhou": "南美洲",
+        "target": "172.107.207.220"
+      },
+      {
+        "id": "9",
+        "name": "203.143.89.72",
+        "zhou": "大洋洲",
+        "target": "203.143.89.72"
+      },
+      {
+        "id": "10",
+        "name": "www.baidu.com",
+        "target": "www.baidu.com"
+      },
+      {
+        "id": "11",
+        "name": "www.qq.com",
+        "target": "www.qq.com"
+      },
+      {
+        "id": "12",
+        "name": "www.taobao.com",
+        "target": "www.taobao.com"
+      },
+      {
+        "id": "13",
+        "name": "www.apple.com",
+        "target": "www.apple.com"
+      },
+      {
+        "id": "14",
+        "name": "www.weibo.com",
+        "target": "www.weibo.com"
+      },
+      {
+        "id": "15",
+        "name": "www.sohu.com",
+        "target": "www.sohu.com"
+      },
+      {
+        "id": "16",
+        "name": "www.163.com",
+        "target": "www.163.com"
+      }
+    ]
+  },
+  {
+    "id": "7",
+    "name": "dns",
+    "items": [
+      {
+        "id": "1",
+        "name": "www.baidu.com",
+        "target": "www.baidu.com"
+      },
+      {
+        "id": "2",
+        "name": "www.qq.com",
+        "target": "www.qq.com"
+      },
+      {
+        "id": "3",
+        "name": "www.taobao.com",
+        "target": "www.taobao.com"
+      },
+      {
+        "id": "4",
+        "name": "www.apple.com",
+        "target": "www.apple.com"
+      },
+      {
+        "id": "5",
+        "name": "www.weibo.com",
+        "target": "www.weibo.com"
+      },
+      {
+        "id": "6",
+        "name": "www.sohu.com",
+        "target": "www.sohu.com"
+      },
+      {
+        "id": "7",
+        "name": "www.163.com",
+        "target": "www.163.com"
+      }
+    ]
+  },
+  {
+    "id": "15",
+    "name": "DIG",
+    "items": [
+      {
+        "id": "1",
+        "name": "www.baidu.com",
+        "target": "www.baidu.com"
+      },
+      {
+        "id": "2",
+        "name": "www.qq.com",
+        "target": "www.qq.com"
+      }
+    ]
+  },
+  {
+    "id": "23",
+    "name": "game",
+    "items": [
+      {
+        "id": "1",
+        "name": "王者荣耀",
+        "type": "对战",
+        "target": "gzawx.smoba.qq.com,cqawx.smoba.qq.com,njawx.smoba.qq.com,tjawx.smoba.qq.com"
+      },
+      {
+        "id": "2",
+        "name": "和平精英",
+        "type": "对战",
+        "target": "wx32.cg.qq.com,wx33.cg.qq.com,wx42.cg.qq.com,wx43.cg.qq.com,wx45.cg.qq.com,wx94.cg.qq.com,wx98.cg.qq.com,wx99.cg.qq.com"
+      },
+      {
+        "id": "3",
+        "name": "穿越火线",
+        "type": "对战",
+        "target": "dsgroup6range.cfm.qq.com,dsgroup7range.cfm.qq.com,dsgroup8range.cfm.qq.com,dsgroup9range.cfm.qq.com,dsgroup10range.cfm.qq.com"
+      },
+      {
+        "id": "4",
+        "name": "第五人格",
+        "type": "对战",
+        "target": "hysignal.huya.com,ylog.huya.com,s-cache.nie.163.com"
+      },
+      {
+        "id": "5",
+        "name": "部落冲突",
+        "type": "对战",
+        "target": "duoinitsupersdk.ewan.cn,versionapi.web.kunlun.com,m.lp.kunlun.com,api.push.kunlun.com,pay-region.kunlun.com,coc.qq.com.x2.sched.dcloudstc.com.tdl.cdn.qshyy.cn"
+      },
+      {
+        "id": "6",
+        "name": "阴阳师",
+        "type": "对战",
+        "target": "game-cache.nie.163.com"
+      },
+      {
+        "id": "7",
+        "name": "梦幻西游",
+        "type": "对战",
+        "target": "duologinsupersdk.ewan.cn,gameext.update.mmog.163.com,fcmsupersdk.ewan.cn,s-cache.nie.163.com"
+      },
+      {
+        "id": "8",
+        "name": "荒野行动",
+        "type": "对战",
+        "target": "gameext.update.mmog.163.com,log.cache.cc.163.com,p-ins15273-15273.lbc-vip.ntes53.netease.com,game-cache.nie.163.com"
+      }
+    ]
+  }
+]

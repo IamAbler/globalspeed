@@ -1,0 +1,120 @@
+# GlobalSpeed
+
+跨平台网络测速工具，提供 Windows、Linux、macOS 桌面端和 CLI。使用本机 Go 核心直接连接测速节点，支持下载、上传、HTTP 延迟和本地历史记录。
+
+桌面使用 Wails v2、React 和 Fluent UI，采用简洁的圆形开始按钮布局，支持深浅主题。
+
+![GlobalSpeed desktop](docs/desktop-preview.png)
+
+## 功能
+
+- 606 个节点、31 个地区，按省份、运营商和关键词选择。
+- 下载与上传测速，可设置采样时长、并发连接和流量预算。
+- HTTP 响应延迟与抖动，保留 TCP 建连诊断数据。
+- 停止测试、JSON 输出、本机 DNS 查询。
+- 桌面与 CLI 共用本地历史，最多保留 100 条成功记录。
+
+## CLI
+
+需要 Go 1.25 或以上。
+
+```bash
+go build -o globalspeed ./cmd/globalspeed
+./globalspeed nodes --province 江苏 --operator 电信
+./globalspeed speed --server 1503 --duration 5 --connections 2 --max-mib 64
+./globalspeed speed --server 1503 --duration 5 --json
+./globalspeed dns example.com
+./globalspeed history
+./globalspeed history --path
+```
+
+Windows 下使用 `globalspeed.exe`。`--no-history` 可禁用本次历史保存，Ctrl+C 停止测试并释放会话。
+
+### 跨平台构建
+
+```bash
+python3 scripts/build_cli.py
+```
+
+在 `build/bin/` 生成 Windows、Linux、macOS 的 amd64 和 arm64 CLI。
+
+## 桌面开发
+
+需要 Go 1.25+、Node.js 22+ 和 Wails v2.15.0。
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+cd frontend
+npm ci
+npm run build
+cd ..
+wails dev -tags desktop
+```
+
+生产构建：
+
+```bash
+wails build -tags desktop
+```
+
+| 平台 | 依赖 |
+| --- | --- |
+| Windows | WebView2 Runtime |
+| macOS | Xcode Command Line Tools、系统 WebKit |
+| Linux | C 编译器、GTK 3、WebKitGTK 4.1、pkg-config |
+
+Ubuntu/Debian 的 Linux 开发环境：
+
+```bash
+sudo apt-get install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+wails build -tags desktop,webkit2_41
+```
+
+桌面端在对应操作系统上构建。[GitHub Actions](.github/workflows/build.yml) 配置了三个平台的桌面构建及六个 CLI 构建，产物可在 Actions 的 Artifacts 下载。
+
+## 测量口径
+
+- HTTP 延迟：5 次请求发完到首个响应字节的中位数，包含节点处理时间；抖动是相邻样本差值绝对值的平均值。
+- TCP 建连时间仅作诊断；TUN、VPN 或透明代理可能使它只反映本机连接接管耗时。HTTP 延迟和 TCP 建连时间均不是 ICMP Ping。
+- `--max-mib` 是上下行有效负载合计预算，下载、上传各分配一半，不包含延迟探测、协议及在途数据开销。
+- 上传仅统计服务器确认的完整请求；网络路径和节点负载会影响测量。
+- HTTP 客户端不使用系统 HTTP 代理，但仍受操作系统路由、TUN 和 VPN 影响。
+- 节点目录为 2026-10-04 快照，节点可能不可用。当前不支持 ICMP、traceroute、游戏或视频体验测试。
+
+## 历史记录
+
+桌面与 CLI 共用 `history.json`；完整测速成功才保存，失败或取消不保存。
+
+| 系统 | 默认位置 |
+| --- | --- |
+| Windows | `%APPDATA%\globalspeed\history.json` |
+| Linux | `$XDG_CONFIG_HOME/globalspeed/history.json`，未设置时为 `~/.config/globalspeed/history.json` |
+| macOS | `~/Library/Application Support/globalspeed/history.json` |
+
+用 `globalspeed history --path` 查询实际路径。
+
+## 开发目录
+
+```text
+cmd/globalspeed/    CLI 入口
+internal/catalog/  节点目录
+internal/speed/    测速与延迟核心
+internal/history/  本地历史
+frontend/          桌面界面与资源嵌入
+main_desktop.go    Wails 入口与事件绑定
+scripts/           构建及界面检查
+docs/              项目截图
+reverse/           分析文档与辅助脚本
+```
+
+## 检查
+
+```bash
+go test ./...
+go test -race ./...
+cd frontend
+npm ci
+npm run build
+```
+
+Race 检查需要可用的 C 编译器。当前六个 CLI 和 Windows amd64 桌面程序已编译，核心测试与前端检查通过；Linux/macOS 桌面及原生窗口运行仍需对应环境验证。

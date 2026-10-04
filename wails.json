@@ -1,0 +1,12 @@
+{
+ "$schema":"https://wails.io/schemas/config.v2.json",
+ "name":"globalspeed-desktop",
+ "outputfilename":"globalspeed-desktop",
+ "frontend:dir":"frontend",
+ "frontend:install":"npm ci",
+ "frontend:build":"npm run build",
+ "frontend:dev:watcher":"npm run dev",
+ "frontend:dev:serverUrl":"auto",
+ "build:tags":"desktop",
+ "info":{"companyName":"GlobalSpeed","productName":"GlobalSpeed","productVersion":"0.1.0","copyright":""}
+}

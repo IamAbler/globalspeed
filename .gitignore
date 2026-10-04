@@ -1,0 +1,21 @@
+# Dependencies and build output
+node_modules/
+frontend/dist/
+frontend/wailsjs/
+build/bin/
+.buildcache/
+# Local settings and credentials
+.env
+.env.*
+!.env.example
+.dev.vars
+.agents/
+.aws/
+.codex/
+# Local reference samples, generated analysis and tooling
+reverse/samples/
+reverse/analysis/
+reverse/.tools/
+__pycache__/
+*.pyc
+.DS_Store
