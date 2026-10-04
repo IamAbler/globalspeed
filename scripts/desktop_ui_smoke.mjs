@@ -37,6 +37,8 @@ try{
  await page.getByRole('button',{name:'开始测速',exact:true}).click();
  await page.locator('.latency-row').getByText('29.28',{exact:true}).waitFor();
  await page.getByText('测速完成 · 会话已释放',{exact:true}).waitFor();
+ await page.waitForFunction(()=>document.querySelector('.speedometer').dataset.morph==='exit');
+ await page.waitForFunction(()=>document.querySelector('.speed-content').classList.contains('result-state'));
  for(const viewport of [{width:800,height:520},{width:960,height:640},{width:1280,height:720}]){await page.setViewportSize(viewport);await checkFits()}
  await page.setViewportSize({width:960,height:640});
  assert.equal(await page.locator('.headline-metric.download strong').innerText(),'92.00');assert.equal(await page.locator('.headline-metric.upload strong').innerText(),'81.00');
@@ -52,14 +54,21 @@ try{
  await page.waitForFunction(()=>{const value=Number(document.querySelector('.speedometer').dataset.speed);return value>5&&value<450});
  const intermediate=await page.locator('.speedometer').getAttribute('data-speed');assert.ok(Number(intermediate)>0&&Number(intermediate)<500,'display must animate instead of jumping to raw sample');
  await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)>490);
+ const geometry=await page.evaluate(async()=>{const {gaugeAngle,curve}=await import('/src/gaugeMotion.ts');return {angles:[0,5,10,50,100,250,500,750,1000,2000].map(gaugeAngle),mid:gaugeAngle(25),ease:curve(.5)}});
+ assert.deepEqual(geometry.angles,[-135,-101.25,-67.5,-33.75,0,33.75,67.5,101.25,135,135]);assert.equal(geometry.mid,-54.84375);assert.ok(geometry.ease>.68&&geometry.ease<.69);
+ await page.waitForFunction(()=>!document.querySelector('.gauge-morph'));
+ await page.waitForFunction(()=>[...document.querySelectorAll('.gauge-label')].every(e=>Number(getComputedStyle(e).opacity)>.99));
  assert.equal(await page.locator('.speed-chart').count(),0);
  assert.equal(await page.getByRole('img',{name:'下载和上传吞吐曲线'}).count(),0);
  for(const viewport of [{width:800,height:520},{width:960,height:640},{width:1280,height:720}]){await page.setViewportSize(viewport);await checkFits()}
  await page.setViewportSize({width:960,height:640});
  await page.screenshot({path:'docs/desktop-measuring.png',fullPage:true});
  await page.evaluate(()=>window.__emit('speed:progress',{phase:'upload',mbps:0,bytes:0,elapsedMs:0}));
+ await page.waitForFunction(()=>document.querySelector('.speedometer').dataset.switching==='true');
+ assert.ok(Number(await page.locator('.speedometer').getAttribute('data-angle'))>-135,'phase transition should return instead of snapping');
  await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)===0);
+ assert.equal(await page.locator('.speedometer').getAttribute('data-angle'),'-135.000');
  await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.getByText('测速已停止',{exact:true}).waitFor();
  await page.getByRole('button',{name:'设置',exact:true}).click();const beforeTheme=await page.evaluate(()=>document.documentElement.dataset.theme);await page.getByRole('switch',{name:'深色模式'}).click();assert.notEqual(await page.evaluate(()=>document.documentElement.dataset.theme),beforeTheme);
- assert.deepEqual(errors,[]);console.log('Desktop UI passed: Fluent rendering, node filters, Go options and events, history, search, stop, theme, speedometer smoothing, phase reset, no curve.');
+ assert.deepEqual(errors,[]);console.log('Desktop UI passed: Fluent rendering, node filters, Go options and events, history, search, stop, theme, speedometer smoothing, segmented scale, 200 ms easing, 500 ms return, entry/exit morph, no curve.');
 }finally{await browser.close()}
