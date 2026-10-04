@@ -87,7 +87,7 @@ func (a *App) shutdown(context.Context) {
 }
 func main() {
 	app := &App{}
-	err := wails.Run(&options.App{Title: "GlobalSpeed", Width: 960, Height: 680, MinWidth: 800, MinHeight: 560,
+	err := wails.Run(&options.App{Title: "GlobalSpeed", Width: 520, Height: 760, MinWidth: 480, MinHeight: 680,
 		AssetServer: &assetserver.Options{Assets: frontend.Assets}, OnStartup: app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
 		Windows: &windows.Options{BackdropType: windows.Mica, WebviewIsTransparent: true, WindowIsTranslucent: true},
 	})

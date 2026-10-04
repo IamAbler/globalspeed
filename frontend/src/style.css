@@ -57,3 +57,19 @@ html,body,#root{height:100%;overflow:hidden}
 @media(prefers-reduced-motion:reduce){.running-state .gauge-label,.dial-reading>span{animation:none;opacity:1}.gauge-fill,.gauge-label{transition:none}}
 
 .dial-reading{top:70%}.status{display:flex;align-items:center;justify-content:center;gap:12px;min-height:24px}.gauge-stop{font-size:10px!important;color:var(--gs-muted)!important;min-height:22px!important;padding:0 6px!important}.gauge-stop svg{width:14px;height:14px}.gauge-morph{pointer-events:none}
+
+/* Compact portrait desktop window, following the desktop app's proportions. */
+@media(max-width:600px){
+ header{height:48px;padding:0 18px}header nav{gap:0}header nav button{min-width:0!important;padding:4px 7px!important;font-size:11px!important}.brand{font-size:14px;gap:7px}.brand>svg{width:20px;height:20px}
+ .secondary-content{height:calc(100dvh - 48px);padding:20px 16px}.secondary-content>div[class*="fui-Card"]{padding:16px;overflow-x:auto}.page-heading{margin-bottom:18px}.filters{gap:8px}.mono{font-size:10px}
+ .speed-content{max-width:520px;padding-left:20px;padding-right:20px}.speed-content .error{left:20px;right:20px}
+ .headline-metrics{gap:24px}.headline-metric{min-width:130px}.headline-metric strong{font-size:34px}
+ .test-stage{--gauge-width:clamp(270px,calc((100dvh - 335px)*1.12),380px)}
+ .ready-state{padding-top:36px}.ready-state .test-stage{width:190px;height:190px;margin:48px auto 40px}
+ .connection-info{gap:16px;grid-template-columns:0.85fr 1.15fr;max-width:400px}.device-info{gap:8px}.server-info{padding-left:14px}.connection-info strong{font-size:13px;overflow-wrap:anywhere}.connection-info small{font-size:10px}.device-info>svg{width:24px;height:24px;flex-shrink:0}
+ .connection-mode{margin-top:22px}.test-caption{gap:5px;font-size:9px;white-space:nowrap}.latency-row{gap:18px}
+ .result-state .test-stage{margin:22px auto 14px}.result-state .connection-info{margin-top:20px}
+}
+@media(max-width:600px) and (max-height:680px){
+ .ready-state{padding-top:20px}.ready-state .test-stage{width:170px;height:170px;margin:30px auto 24px}.connection-mode{margin-top:14px}.result-state .test-stage{margin:12px auto 8px}.result-state .connection-info{margin-top:12px}
+}
