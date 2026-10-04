@@ -2,7 +2,9 @@
 
 跨平台网络测速工具，提供 Windows、Linux、macOS 桌面端和 CLI。使用本机 Go 核心直接连接测速节点，支持下载、上传、Ping 和本地历史记录。
 
-桌面使用 Wails v2、React 和 Fluent UI，采用弧形刻度与指针速度表布局，支持深浅主题。
+桌面使用 Wails v2、React 和 Fluent UI，采用中央 GO 按钮、紧凑的服务器信息和单/多连接切换；测速时显示弧形刻度与指针速度表，支持深浅主题。
+
+桌面默认窗口为 960×680，最小为 800×560。测速主页面随客户区高度调整尺寸；节点目录与历史页保留独立滚动。
 
 ![GlobalSpeed desktop](docs/desktop-preview.png)
 

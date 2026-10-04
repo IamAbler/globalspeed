@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 const servers=JSON.parse(await fs.readFile('internal/catalog/servers.json','utf8'));
 const browser=await chromium.launch({headless:true,executablePath:'/home/abler/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell',args:['--no-sandbox'],env:{...process.env,LD_LIBRARY_PATH:path.resolve('reverse/.tools/browser-libs/usr/lib/x86_64-linux-gnu')}});
 try{
- const page=await browser.newPage({viewport:{width:1180,height:820}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage({viewport:{width:960,height:640}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(({servers})=>{
   const listeners={};let timer,records=[];let n=0;
   const emit=(name,data)=>listeners[name]?.(data);
@@ -23,6 +23,12 @@ try{
  await page.goto('http://127.0.0.1:5173');
  await page.getByRole('button',{name:'开始测速',exact:true}).waitFor();
  await page.waitForFunction(()=>!document.querySelector('button[disabled]'));
+ const checkFits=async()=>{
+  const layout=await page.evaluate(()=>{const caption=document.querySelector('.test-caption').getBoundingClientRect();const stage=document.querySelector('.test-stage').getBoundingClientRect();const reading=document.querySelector('.dial-reading')?.getBoundingClientRect();const status=document.querySelector('.status').getBoundingClientRect();return {height:innerHeight,bottom:caption.bottom,scroll:document.documentElement.scrollHeight,width:innerWidth,right:caption.right,readingBottom:reading?.bottom,statusTop:status.top,stageBottom:stage.bottom}});
+  assert.ok(layout.bottom<=layout.height,JSON.stringify(layout));assert.ok(layout.scroll<=layout.height,JSON.stringify(layout));assert.ok(layout.right<=layout.width,JSON.stringify(layout));if(layout.readingBottom)assert.ok(layout.readingBottom<=layout.statusTop,JSON.stringify(layout));
+ };
+ for(const viewport of [{width:800,height:520},{width:960,height:640},{width:1280,height:720}]){await page.setViewportSize(viewport);await checkFits()}
+ await page.setViewportSize({width:960,height:640});
  await page.screenshot({path:'docs/desktop-preview.png',fullPage:true});
  await page.getByRole('button',{name:'更换节点',exact:true}).click();
  await page.getByRole('combobox',{name:'省份',exact:true}).selectOption('江苏');
@@ -31,6 +37,8 @@ try{
  await page.getByRole('button',{name:'开始测速',exact:true}).click();
  await page.locator('.latency-row').getByText('29.28',{exact:true}).waitFor();
  await page.getByText('测速完成 · 会话已释放',{exact:true}).waitFor();
+ for(const viewport of [{width:800,height:520},{width:960,height:640},{width:1280,height:720}]){await page.setViewportSize(viewport);await checkFits()}
+ await page.setViewportSize({width:960,height:640});
  assert.equal(await page.locator('.headline-metric.download strong').innerText(),'92.00');assert.equal(await page.locator('.headline-metric.upload strong').innerText(),'81.00');
  const options=await page.evaluate(()=>window.__options);assert.equal(options.durationSeconds,5);assert.equal(options.connections,2);assert.ok(servers.some(s=>s.hostid===options.serverId&&s.pname==='江苏'&&s.oper==='电信'));
  await page.getByRole('button',{name:'历史记录',exact:true}).click();await page.getByRole('cell',{name:'92.00',exact:true}).waitFor();
@@ -46,6 +54,8 @@ try{
  await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)>490);
  assert.equal(await page.locator('.speed-chart').count(),0);
  assert.equal(await page.getByRole('img',{name:'下载和上传吞吐曲线'}).count(),0);
+ for(const viewport of [{width:800,height:520},{width:960,height:640},{width:1280,height:720}]){await page.setViewportSize(viewport);await checkFits()}
+ await page.setViewportSize({width:960,height:640});
  await page.screenshot({path:'docs/desktop-measuring.png',fullPage:true});
  await page.evaluate(()=>window.__emit('speed:progress',{phase:'upload',mbps:0,bytes:0,elapsedMs:0}));
  await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)===0);
