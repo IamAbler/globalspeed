@@ -38,7 +38,7 @@ func (c *Client) match(ctx context.Context, o MatchOptions, endpoint string, pro
 		o.Network = 5
 	}
 	if o.Network != 4 && o.Network != 5 {
-		return catalog.Server{}, errors.New("network 必须为 4 或 5")
+		return catalog.Server{}, Failure(136, errors.New("network 必须为 4 或 5"))
 	}
 	if progress != nil {
 		progress(Progress{Phase: "selecting"})
@@ -48,42 +48,42 @@ func (c *Client) match(ctx context.Context, o MatchOptions, endpoint string, pro
 	defer cancel()
 	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
-		return catalog.Server{}, err
+		return catalog.Server{}, Failure(122, err)
 	}
 	response, err := c.HTTP.Do(req)
 	if err != nil {
 		if ctx.Err() != nil {
 			return catalog.Server{}, ctx.Err()
 		}
-		return catalog.Server{}, errors.New("自动选点服务请求失败（APK 状态 121）")
+		return catalog.Server{}, Failure(121, nil)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return catalog.Server{}, fmt.Errorf("自动选点服务 HTTP %d（APK 状态 122）", response.StatusCode)
+		return catalog.Server{}, Failure(122, nil)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, 1024*1024+1))
 	if ctx.Err() != nil {
 		return catalog.Server{}, ctx.Err()
 	}
 	if err != nil || len(data) > 1024*1024 {
-		return catalog.Server{}, errors.New("自动选点目录响应无效")
+		return catalog.Server{}, Failure(122, nil)
 	}
 	var rows []struct {
 		catalog.Server
 		MatchCity string `json:"city"`
 	}
 	if err = json.Unmarshal(data, &rows); err != nil || len(rows) == 0 {
-		return catalog.Server{}, errors.New("自动选点目录为空或无效（APK 状态 122）")
+		return catalog.Server{}, Failure(122, nil)
 	}
 	candidates := make([]catalog.Server, 0, len(rows))
 	for _, row := range rows {
 		s := row.Server
 		s.City = row.MatchCity
 		if s.ID == "" || s.Name == "" {
-			return catalog.Server{}, errors.New("自动选点节点格式无效")
+			return catalog.Server{}, Failure(122, nil)
 		}
 		if _, err := s.Address(); err != nil {
-			return catalog.Server{}, err
+			return catalog.Server{}, Failure(122, err)
 		}
 		candidates = append(candidates, s)
 	}

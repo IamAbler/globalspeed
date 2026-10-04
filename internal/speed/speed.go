@@ -35,13 +35,13 @@ type Options struct {
 
 func (o Options) Validate() error {
 	if o.DurationSeconds < 1 || o.DurationSeconds > 30 {
-		return errors.New("每阶段时长必须为 1–30 秒")
+		return Failure(136, errors.New("每阶段时长必须为 1–30 秒"))
 	}
 	if o.Connections < 1 || o.Connections > 6 {
-		return errors.New("并发连接必须为 1–6")
+		return Failure(136, errors.New("并发连接必须为 1–6"))
 	}
 	if o.MaxMiB < 1 || o.MaxMiB > 1024 {
-		return errors.New("总流量预算必须为 1–1024 MiB")
+		return Failure(136, errors.New("总流量预算必须为 1–1024 MiB"))
 	}
 	return nil
 }
@@ -112,14 +112,14 @@ func (c *Client) smallWithTimeout(ctx context.Context, method, target string, ti
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("节点返回 HTTP %d", resp.StatusCode)
+		return "", Failure(131, fmt.Errorf("节点返回 HTTP %d", resp.StatusCode))
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 4097))
 	if err != nil {
 		return "", err
 	}
 	if len(data) > 4096 {
-		return "", errors.New("节点会话响应过大")
+		return "", Failure(131, errors.New("节点会话响应过大"))
 	}
 	return strings.TrimSpace(string(data)), nil
 }
@@ -136,36 +136,46 @@ func (c *Client) session(ctx context.Context, base string) (string, error) {
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
 		answer, err = c.smallWithTimeout(ctx, http.MethodGet, target, 3*time.Second)
-		if err == nil || ctx.Err() != nil {
+		var responseError *StatusError
+		if err == nil || errors.As(err, &responseError) || ctx.Err() != nil {
 			break
 		}
 	}
 	if err != nil {
-		return "", fmt.Errorf("申请会话失败（APK 异常重试策略，最多 3 次）: %w", err)
+		var responseError *StatusError
+		if errors.As(err, &responseError) {
+			return "", err
+		}
+		return "", Failure(130, err)
 	}
 	// APK SpeedTestTask.enqueue maps these prefixes to distinct status codes.
 	switch {
 	case answer == "":
-		return "", errors.New("节点会话响应为空（APK 状态 131）")
+		return "", Failure(131, nil)
 	case strings.HasPrefix(answer, "0"):
-		return "", errors.New("节点拒绝会话：响应以 0 开头（APK 状态 132）")
+		return "", Failure(132, nil)
 	case strings.HasPrefix(answer, "2"):
-		return "", errors.New("节点拒绝会话：响应以 2 开头（APK 状态 133）")
+		return "", Failure(133, nil)
 	case strings.HasPrefix(answer, "-1"):
-		return "", errors.New("节点拒绝会话：响应以 -1 开头（APK 状态 134）")
+		return "", Failure(134, nil)
 	case !strings.HasPrefix(answer, "1-"):
-		return "", errors.New("节点会话响应无法识别")
+		return "", Failure(131, nil)
 	}
 	key := answer[2:]
 	if len(key) < 1 || len(key) > 128 || strings.IndexFunc(key, func(r rune) bool {
 		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_' || r == '.')
 	}) >= 0 {
-		return "", errors.New("节点会话格式无效")
+		return "", Failure(131, nil)
 	}
 	return key, nil
 }
 
 func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (result Result, err error) {
+	defer func() {
+		if err != nil {
+			err = PublicError(err)
+		}
+	}()
 	if err = o.Validate(); err != nil {
 		return
 	}
@@ -175,6 +185,9 @@ func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (r
 		result.Server, err = c.Match(ctx, o.Match, progress)
 	} else {
 		result.Server, err = catalog.Find(o.ServerID)
+		if err != nil {
+			err = Failure(139, err)
+		}
 	}
 	if err != nil {
 		return
@@ -201,16 +214,14 @@ func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (r
 	}
 	key, sessionErr := c.session(ctx, base)
 	if sessionErr != nil {
-		err = fmt.Errorf("%s (%s) 会话阶段: %w", result.Server.Name, address, sessionErr)
+		err = sessionErr
 		return
 	}
 	defer func() {
 		// Release with a fresh context even when the user stopped sampling.
 		_, releaseErr := c.small(context.Background(), http.MethodPost, base+"/speed/dovalid?key="+url.QueryEscape(key))
 		result.Released = releaseErr == nil
-		if releaseErr != nil {
-			err = errors.Join(err, fmt.Errorf("会话释放未确认: %w", releaseErr))
-		}
+
 	}()
 	budget := int64(o.MaxMiB) * MiB / 2
 	result.Download, err = c.transfer(ctx, o, base, key, "download", budget, progress)
@@ -370,10 +381,19 @@ func (c *Client) transfer(parent context.Context, o Options, base, key, phase st
 		return result, parent.Err()
 	}
 	if failure != nil {
-		return result, fmt.Errorf("%s 阶段: %w", phase, failure)
+		code := 135
+		var requestError *url.Error
+		if errors.As(failure, &requestError) {
+			code = 130
+		}
+		return result, Failure(code, failure)
 	}
 	if n == 0 {
-		return result, errors.New("采样期内没有完成有效传输")
+		code := 137
+		if phase == "upload" {
+			code = 138
+		}
+		return result, Failure(code, nil)
 	}
 	if progress != nil {
 		progress(Progress{Phase: phase, Mbps: result.Mbps, Bytes: n, ElapsedMS: result.ElapsedMS})

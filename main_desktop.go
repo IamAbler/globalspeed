@@ -35,7 +35,7 @@ func (a *App) StartSpeed(o speed.Options) error {
 	}
 	if !o.Auto {
 		if _, err := catalog.Find(o.ServerID); err != nil {
-			return err
+			return speed.Failure(139, err)
 		}
 	}
 	a.mu.Lock()
@@ -44,7 +44,7 @@ func (a *App) StartSpeed(o speed.Options) error {
 		return fmt.Errorf("应用正在退出")
 	}
 	if a.cancel != nil {
-		return fmt.Errorf("已有测速任务正在运行")
+		return speed.Failure(992, nil)
 	}
 	ctx, cancel := context.WithCancel(a.ctx)
 	a.cancel = cancel
@@ -62,7 +62,7 @@ func (a *App) StartSpeed(o speed.Options) error {
 		a.mu.Unlock()
 		cancel()
 		if err != nil {
-			runtime.EventsEmit(a.ctx, "speed:error", err.Error())
+			runtime.EventsEmit(a.ctx, "speed:error", speed.PublicError(err))
 		} else {
 			runtime.EventsEmit(a.ctx, "speed:result", result)
 		}

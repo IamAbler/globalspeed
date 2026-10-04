@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {FluentProvider,webLightTheme,webDarkTheme,Button,Card,Select,Input,Field,Table,TableHeader,TableRow,TableHeaderCell,TableBody,TableCell,Switch} from '@fluentui/react-components';
+import {FluentProvider,webLightTheme,webDarkTheme,Button,Card,Select,Input,Field,Table,TableHeader,TableRow,TableHeaderCell,TableBody,TableCell,Switch,Dialog,DialogSurface,DialogBody,DialogTitle,DialogContent,DialogActions} from '@fluentui/react-components';
 import {ArrowDown24Regular,ArrowUp24Regular,Dismiss24Regular,Globe24Regular,History24Regular,Settings24Regular,Search24Regular,WeatherMoon24Regular,WeatherSunny24Regular} from '@fluentui/react-icons';
 import './style.css';
 import {Speedometer} from './Speedometer';
@@ -24,6 +24,7 @@ function App(){
  const [duration,setDuration]=useState(5);const [connections,setConnections]=useState(2);const [budget,setBudget]=useState(64);
  const [latency,setLatency]=useState<Ping|null>(null);
  const [auto,setAuto]=useState(true);const [autoNode,setAutoNode]=useState<Server|null>(null);
+ const [matchFailure,setMatchFailure]=useState(false);
  const [running,setRunning]=useState(false);const [closing,setClosing]=useState(false);const [status,setStatus]=useState('准备就绪');const [error,setError]=useState('');
  const [progress,setProgress]=useState<Progress|null>(null);const [result,setResult]=useState<Result|null>(null);const [rates,setRates]=useState<{download?:number;upload?:number}>({});const [tablePage,setTablePage]=useState(0);
  const provinces=useMemo(()=>[...new Set(servers.map(s=>s.pname))],[servers]);
@@ -31,6 +32,7 @@ function App(){
  const selected=auto?autoNode:servers.find(s=>s.hostid===serverId);
  useEffect(()=>{if(!filtered.some(s=>s.hostid===serverId))setServerId(filtered[0]?.hostid||'');setTablePage(0)},[filtered]);
  useEffect(()=>{if(running)return;setLatency(null);setResult(null);setProgress(null);setRates({});setError('');setStatus('准备就绪')},[serverId]);
+ useEffect(()=>{if(!error||matchFailure)return;const timer=setTimeout(()=>setError(''),4000);return()=>clearTimeout(timer)},[error,matchFailure]);
  useEffect(()=>{if(!closing)return;const timer=setTimeout(()=>setClosing(false),matchMedia('(prefers-reduced-motion: reduce)').matches?0:820);return()=>clearTimeout(timer)},[closing]);
  useEffect(()=>{document.documentElement.dataset.theme=dark?'dark':'light';localStorage.setItem('theme',dark?'dark':'light')},[dark]);
  useEffect(()=>{
@@ -38,14 +40,14 @@ function App(){
   app.ListServers().then(setServers).catch(e=>setError(String(e)));app.History().then(setRecords).catch(e=>setError(String(e)));
   const events:{[name:string]:(data:any)=>void}={
    'speed:progress':(p:Progress)=>{if(p.ping)setLatency(p.ping);if(p.server)setAutoNode(p.server);setProgress(p);setStatus(phaseNames[p.phase]||p.phase);if(p.phase==='download'||p.phase==='upload')setRates(old=>({...old,[p.phase]:p.mbps}))},
-   'speed:result':(r:Result)=>{setClosing(true);setResult(r);if(r.ping)setLatency(r.ping);setAutoNode(r.server);setRunning(false);setStatus('测速完成 · 会话已释放');app.History().then(setRecords).catch(e=>setError(String(e)))},
-   'speed:error':(e:string)=>{setRunning(false);setProgress(null);setResult(null);setStatus(e.includes('context canceled')?'测速已停止':'测速失败');setError(e==='context canceled'?'':e)},
+   'speed:result':(r:Result)=>{setClosing(true);setResult(r);if(r.ping)setLatency(r.ping);setAutoNode(r.server);setRunning(false);setStatus(r.released?'测试完成 · 会话已释放':'测试完成');app.History().then(setRecords).catch(e=>setError(String(e)))},
+   'speed:error':(e:{code:number;message:string}|string)=>{const code=typeof e==='string'?0:e.code;const message=typeof e==='string'?e:e.message;const matching=code>=121&&code<=123;setRunning(false);setClosing(false);setProgress(null);setResult(null);setRates({});setStatus(matching?`服务器匹配失败(${message}).`:message);setError(message);setMatchFailure(matching)},
    'speed:notice':(e:string)=>setError(e),
   };
   Object.entries(events).forEach(([name,handler])=>window.runtime?.EventsOn(name,handler,-1));
   return()=>Object.keys(events).forEach(name=>window.runtime?.EventsOff(name));
  },[]);
- async function start(){const app=bridge();if(!app)return;setClosing(false);setRunning(true);if(auto)setAutoNode(null);setLatency(null);setError('');setResult(null);setProgress(null);setRates({});setStatus('连接所选节点…');try{await app.StartSpeed({auto,match:{province,operator},serverId:auto?'':serverId,durationSeconds:duration,connections,maxMiB:budget})}catch(e){setRunning(false);setStatus('测速失败');setError(String(e))}}
+ async function start(){const app=bridge();if(!app)return;setMatchFailure(false);setClosing(false);setRunning(true);if(auto)setAutoNode(null);setLatency(null);setError('');setResult(null);setProgress(null);setRates({});setStatus('连接所选节点…');try{await app.StartSpeed({auto,match:{province,operator},serverId:auto?'':serverId,durationSeconds:duration,connections,maxMiB:budget})}catch(e){setRunning(false);setStatus('测速失败');setError(String(e))}}
  async function stop(){setStatus('正在停止并释放会话…');try{await bridge()?.StopSpeed()}catch(e){setError(String(e))}}
  const shownPing=result?.ping??latency;
  const measuring=running&&(progress?.phase==='download'||progress?.phase==='upload');
@@ -55,6 +57,7 @@ function App(){
  const upSpeed=result?.upload.mbps??(running?(progress?.phase==='upload'?(motion.switching?undefined:liveSpeed):rates.upload):undefined);
  const nodeFilters=<div className="filters"><Field label="省份"><Select value={province} disabled={running} onChange={(_,d)=>{setProvince(d.value);setOperator('')}}><option value="">全部省份</option>{provinces.map(p=><option key={p}>{p}</option>)}</Select></Field><Field label="运营商"><Select value={operator} disabled={running} onChange={(_,d)=>setOperator(d.value)}><option value="">全部运营商</option>{['电信','联通','移动','教育网','广电网'].map(o=><option key={o}>{o}</option>)}</Select></Field></div>;
  return <FluentProvider theme={dark?webDarkTheme:webLightTheme} className="app" style={{backgroundColor:'var(--gs-bg)',color:'var(--gs-fg)'}}>
+  <Dialog open={matchFailure} onOpenChange={(_,d)=>setMatchFailure(d.open)}><DialogSurface><DialogBody><DialogTitle>匹配服务器失败，是否重试?</DialogTitle><DialogContent>{error}</DialogContent><DialogActions><Button onClick={()=>setMatchFailure(false)}>取消</Button><Button appearance="primary" onClick={start}>重试</Button></DialogActions></DialogBody></DialogSurface></Dialog>
   <main className={`page-${page}`}><header><button className="brand" onClick={()=>setPage('speed')}><Globe24Regular/><span>GlobalSpeed</span></button><nav>{[{id:'speed',name:'网络测速'},{id:'history',name:'历史记录'},{id:'settings',name:'设置'}].map(item=><Button key={item.id} appearance="transparent" className={page===item.id?'nav-selected':''} onClick={()=>setPage(item.id)}>{item.name}</Button>)}<Button appearance="transparent" icon={dark?<WeatherSunny24Regular/>:<WeatherMoon24Regular/>} aria-label="切换主题" onClick={()=>setDark(!dark)}/></nav></header>
   <div className={page==='speed'?`content speed-content ${running||closing?'running-state':result?'result-state':'ready-state'}`:'content secondary-content'}>
   {page!=='speed'&&<div className="page-heading"><h1>{({nodes:'选择测速节点',history:'测速历史',settings:'设置'} as Record<string,string>)[page]}</h1><p>{page==='nodes'?'按地区与运营商筛选节点':page==='history'?'最近 100 次成功测量':'采样参数与界面外观'}</p></div>}

@@ -18,7 +18,7 @@ try{
     n++;emit('speed:progress',{phase:n<5?'download':'upload',mbps:n*12,bytes:n*1024,elapsedMs:n*80});
     if(n===10){clearInterval(timer);const r={time:new Date().toISOString(),server:servers.find(s=>s.hostid===options.serverId),path:'device-to-carrier',tcpMedianMs:.5,tcpJitterMs:.1,ping:{method:'icmp',averageMs:29.28,jitterMs:1.4,status:0,sent:10,received:10,packetLossPct:0},download:{mbps:92,bytes:1000000,elapsedMs:300,budgetReached:false},upload:{mbps:81,bytes:1000000,elapsedMs:400,budgetReached:false},released:true};records=[r,...records];emit('speed:result',r)}
    },80);
-  },StopSpeed:async()=>{clearInterval(timer);emit('speed:error','context canceled')}}}};
+  },StopSpeed:async()=>{clearInterval(timer);emit('speed:error',{code:990,message:'用户中止测试'})}}}};
  },{servers});
  await page.goto('http://127.0.0.1:5173');
  await page.getByRole('button',{name:'开始测速',exact:true}).waitFor();
@@ -36,7 +36,7 @@ try{
  await page.getByRole('button',{name:'选择',exact:true}).first().click();
  await page.getByRole('button',{name:'开始测速',exact:true}).click();
  await page.locator('.latency-row').getByText('29.28',{exact:true}).waitFor();
- await page.getByText('测速完成 · 会话已释放',{exact:true}).waitFor();
+ await page.getByText('测试完成 · 会话已释放',{exact:true}).waitFor();
  await page.waitForFunction(()=>document.querySelector('.speedometer').dataset.morph==='exit');
  await page.waitForFunction(()=>document.querySelector('.speed-content').classList.contains('result-state'));
  for(const viewport of [{width:800,height:520},{width:960,height:640},{width:1280,height:720}]){await page.setViewportSize(viewport);await checkFits()}
@@ -45,8 +45,8 @@ try{
  const options=await page.evaluate(()=>window.__options);assert.equal(options.durationSeconds,5);assert.equal(options.connections,2);assert.ok(servers.some(s=>s.hostid===options.serverId&&s.pname==='江苏'&&s.oper==='电信'));
  await page.getByRole('button',{name:'历史记录',exact:true}).click();await page.getByRole('cell',{name:'92.00',exact:true}).waitFor();
  await page.getByRole('button',{name:'网络测速',exact:true}).click();await page.getByRole('button',{name:'更换节点',exact:true}).click();await page.getByPlaceholder('搜索名称、地址或城市').fill('南京');assert.ok(await page.getByRole('row').count()>1);
- await page.getByRole('button',{name:'网络测速',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.getByText('测速已停止',{exact:true}).waitFor();
- await page.getByRole('button',{name:'更换节点',exact:true}).click();await page.getByRole('button',{name:'自动选择节点',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByText('测速完成 · 会话已释放',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__options.auto),true);
+ await page.getByRole('button',{name:'网络测速',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.locator('.status').getByText('用户中止测试',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'更换节点',exact:true}).click();await page.getByRole('button',{name:'自动选择节点',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByText('测试完成 · 会话已释放',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__options.auto),true);
  await page.getByRole('button',{name:'开始测速',exact:true}).click();
  await page.evaluate(()=>{window.__pauseMock();window.__emit('speed:progress',{phase:'download',mbps:0,bytes:1,elapsedMs:1})});
  await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)===0);
@@ -68,7 +68,17 @@ try{
  assert.ok(Number(await page.locator('.speedometer').getAttribute('data-angle'))>-135,'phase transition should return instead of snapping');
  await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)===0);
  assert.equal(await page.locator('.speedometer').getAttribute('data-angle'),'-135.000');
- await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.getByText('测速已停止',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.locator('.status').getByText('用户中止测试',{exact:true}).waitFor();
  await page.getByRole('button',{name:'设置',exact:true}).click();const beforeTheme=await page.evaluate(()=>document.documentElement.dataset.theme);await page.getByRole('switch',{name:'深色模式'}).click();assert.notEqual(await page.evaluate(()=>document.documentElement.dataset.theme),beforeTheme);
+ await page.getByRole('button',{name:'网络测速',exact:true}).click();
+ await page.evaluate(()=>window.__emit('speed:error',{code:132,message:'测速服务器繁忙,请稍后重试'}));
+ await page.locator('.status').getByText('测速服务器繁忙,请稍后重试',{exact:true}).waitFor();
+ await page.evaluate(()=>window.__emit('speed:error',{code:121,message:'云服务器连接失败'}));
+ await page.getByRole('dialog').waitFor();
+ await page.getByRole('button',{name:'取消',exact:true}).click();
+ await page.getByRole('dialog').waitFor({state:'hidden'});
+ await page.evaluate(()=>window.__emit('speed:error',{code:122,message:'云服务器响应错误'}));
+ await page.getByRole('button',{name:'重试',exact:true}).click();
+ await page.getByText('测试完成 · 会话已释放',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);console.log('Desktop UI passed: Fluent rendering, node filters, Go options and events, history, search, stop, theme, speedometer smoothing, segmented scale, 200 ms easing, 500 ms return, entry/exit morph, no curve.');
 }finally{await browser.close()}
