@@ -11,6 +11,7 @@ try{
  await page.addInitScript(({servers})=>{
   const listeners={};let timer,records=[];let n=0;
   const emit=(name,data)=>listeners[name]?.(data);
+  window.__emit=emit;window.__pauseMock=()=>clearInterval(timer);
   window.runtime={EventsOn:(name,handler)=>{listeners[name]=handler},EventsOff:name=>delete listeners[name]};
   window.go={main:{App:{ListServers:async()=>servers,History:async()=>records,StartSpeed:async options=>{
    window.__options=options;if(options.auto){options.serverId='1503';emit('speed:progress',{phase:'selected',server:servers.find(s=>s.hostid==='1503')})};emit('speed:progress',{phase:'session',mbps:0,bytes:0,elapsedMs:0,ping:{method:'icmp',averageMs:29.28,jitterMs:1.4,status:0,sent:10,received:10,packetLossPct:0}});n=0;clearInterval(timer);timer=setInterval(()=>{
@@ -30,11 +31,25 @@ try{
  await page.getByRole('button',{name:'开始测速',exact:true}).click();
  await page.locator('.latency-row').getByText('29.28',{exact:true}).waitFor();
  await page.getByText('测速完成 · 会话已释放',{exact:true}).waitFor();
+ assert.equal(await page.locator('.headline-metric.download strong').innerText(),'92.00');assert.equal(await page.locator('.headline-metric.upload strong').innerText(),'81.00');
  const options=await page.evaluate(()=>window.__options);assert.equal(options.durationSeconds,5);assert.equal(options.connections,2);assert.ok(servers.some(s=>s.hostid===options.serverId&&s.pname==='江苏'&&s.oper==='电信'));
  await page.getByRole('button',{name:'历史记录',exact:true}).click();await page.getByRole('cell',{name:'92.00',exact:true}).waitFor();
  await page.getByRole('button',{name:'网络测速',exact:true}).click();await page.getByRole('button',{name:'更换节点',exact:true}).click();await page.getByPlaceholder('搜索名称、地址或城市').fill('南京');assert.ok(await page.getByRole('row').count()>1);
  await page.getByRole('button',{name:'网络测速',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.getByText('测速已停止',{exact:true}).waitFor();
  await page.getByRole('button',{name:'更换节点',exact:true}).click();await page.getByRole('button',{name:'自动选择节点',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByText('测速完成 · 会话已释放',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__options.auto),true);
+ await page.getByRole('button',{name:'开始测速',exact:true}).click();
+ await page.evaluate(()=>{window.__pauseMock();window.__emit('speed:progress',{phase:'download',mbps:0,bytes:1,elapsedMs:1})});
+ await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)===0);
+ await page.evaluate(()=>window.__emit('speed:progress',{phase:'download',mbps:500,bytes:1000,elapsedMs:250}));
+ await page.waitForFunction(()=>{const value=Number(document.querySelector('.speedometer').dataset.speed);return value>5&&value<450});
+ const intermediate=await page.locator('.speedometer').getAttribute('data-speed');assert.ok(Number(intermediate)>0&&Number(intermediate)<500,'display must animate instead of jumping to raw sample');
+ await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)>490);
+ assert.equal(await page.locator('.speed-chart').count(),0);
+ assert.equal(await page.getByRole('img',{name:'下载和上传吞吐曲线'}).count(),0);
+ await page.screenshot({path:'docs/desktop-measuring.png',fullPage:true});
+ await page.evaluate(()=>window.__emit('speed:progress',{phase:'upload',mbps:0,bytes:0,elapsedMs:0}));
+ await page.waitForFunction(()=>Number(document.querySelector('.speedometer').dataset.speed)===0);
+ await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.getByText('测速已停止',{exact:true}).waitFor();
  await page.getByRole('button',{name:'设置',exact:true}).click();const beforeTheme=await page.evaluate(()=>document.documentElement.dataset.theme);await page.getByRole('switch',{name:'深色模式'}).click();assert.notEqual(await page.evaluate(()=>document.documentElement.dataset.theme),beforeTheme);
- assert.deepEqual(errors,[]);console.log('Desktop UI passed: Fluent rendering, node filters, Go options and events, history, search, stop, theme.');
+ assert.deepEqual(errors,[]);console.log('Desktop UI passed: Fluent rendering, node filters, Go options and events, history, search, stop, theme, speedometer smoothing, phase reset, no curve.');
 }finally{await browser.close()}
