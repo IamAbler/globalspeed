@@ -106,3 +106,7 @@ token = MD5(a + b)
 桌面测速失败更新状态并短暂显示提示；服务器匹配失败显示 `服务器匹配失败(原因).`，打开“匹配服务器失败，是否重试?”对话框，提供重试和取消。取消也使用原版 990 文案。事件携带结构化 code/message，底层原因保留于 Go 错误链，不把请求 URL、token 或 key 显示给用户。
 
 `SpeedTestTask.run` 仅记录 dequeue 返回值，不覆盖测速状态。Go 同样保留成功结果，释放失败时 `released=false`，界面不声称会话已释放。Go 的压缩响应检查、有限流量预算及 HTTP 实现仍可能产生与 Android 不同的失败条件；这些检查的提示映射到相应状态，不能视为完整 Android 网络栈仿真。
+
+## 桌面图标
+
+用户指定复用样本图标。Manifest 的 application icon 为 `0x7f08016c`，`R.drawable.taierspeed_logo` 对应 `res/drawable-hdpi-v4/taierspeed_logo.png`。原始 512×512 PNG 原样提取到 `build/appicon.png`，未重绘或删除图片内文字。Windows/macOS 由 Wails 转换并打包；Linux 嵌入原 PNG 并提供启动器文件。

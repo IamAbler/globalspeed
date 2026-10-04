@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GlobalSpeed
+Comment=Internet speed test
+Exec=globalspeed-desktop
+Icon=globalspeed
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=globalspeed-desktop

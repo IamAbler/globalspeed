@@ -38,6 +38,10 @@ jobs:
         run: wails build -tags desktop -platform darwin/universal
       - if: runner.os == 'Linux'
         run: wails build -tags desktop,webkit2_41
+      - if: runner.os == 'Linux'
+        run: |
+          cp build/appicon.png build/bin/globalspeed.png
+          cp build/linux/globalspeed.desktop build/bin/
       - uses: actions/upload-artifact@v6
         with:
           name: desktop-${{ runner.os }}-${{ runner.os == 'macOS' && 'universal' || runner.arch }}

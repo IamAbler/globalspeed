@@ -4,12 +4,14 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"sync"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"globalspeed/frontend"
@@ -17,6 +19,9 @@ import (
 	"globalspeed/internal/history"
 	"globalspeed/internal/speed"
 )
+
+//go:embed build/appicon.png
+var appIcon []byte
 
 type App struct {
 	ctx     context.Context
@@ -89,6 +94,7 @@ func main() {
 	app := &App{}
 	err := wails.Run(&options.App{Title: "GlobalSpeed", Width: 520, Height: 760, MinWidth: 480, MinHeight: 680,
 		AssetServer: &assetserver.Options{Assets: frontend.Assets}, OnStartup: app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
+		Linux:   &linux.Options{Icon: appIcon, ProgramName: "globalspeed-desktop", WebviewGpuPolicy: linux.WebviewGpuPolicyNever},
 		Windows: &windows.Options{BackdropType: windows.Mica, WebviewIsTransparent: true, WindowIsTranslucent: true},
 	})
 	if err != nil {
