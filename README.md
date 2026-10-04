@@ -70,7 +70,7 @@ sudo apt-get install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-d
 wails build -tags desktop,webkit2_41
 ```
 
-桌面端在对应操作系统上构建。[GitHub Actions](.github/workflows/build.yml) 配置了三个平台的桌面构建及六个 CLI 构建，产物可在 Actions 的 Artifacts 下载。
+桌面端在对应操作系统上构建。CI 使用固定的 Ubuntu 24.04 与 macOS 15 Intel runner；macOS 构建 Universal 应用，支持 Intel 和 Apple Silicon。[GitHub Actions](.github/workflows/build.yml) 配置了三个平台的桌面构建及六个 CLI 构建，产物可在 Actions 的 Artifacts 下载。
 
 ## 测量口径
 
