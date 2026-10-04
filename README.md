@@ -1,6 +1,6 @@
 # GlobalSpeed
 
-跨平台网络测速工具，提供 Windows、Linux、macOS 桌面端和 CLI。使用本机 Go 核心直接连接测速节点，支持下载、上传、HTTP 延迟和本地历史记录。
+跨平台网络测速工具，提供 Windows、Linux、macOS 桌面端和 CLI。使用本机 Go 核心直接连接测速节点，支持下载、上传、Ping 和本地历史记录。
 
 桌面使用 Wails v2、React 和 Fluent UI，采用简洁的圆形开始按钮布局，支持深浅主题。
 
@@ -10,7 +10,8 @@
 
 - 606 个节点、31 个地区，按省份、运营商和关键词选择。
 - 下载与上传测速，可设置采样时长、并发连接和流量预算。
-- HTTP 响应延迟与抖动，保留 TCP 建连诊断数据。
+- ICMP Ping 平均延迟与抖动；不可用时回退到 TCP。
+- 自动匹配节点，也可手动选择。
 - 停止测试、JSON 输出、本机 DNS 查询。
 - 桌面与 CLI 共用本地历史，最多保留 100 条成功记录。
 
@@ -21,6 +22,8 @@
 ```bash
 go build -o globalspeed ./cmd/globalspeed
 ./globalspeed nodes --province 江苏 --operator 电信
+./globalspeed speed --auto --duration 5 --connections 2 --max-mib 64
+./globalspeed select --province 江苏 --operator 电信
 ./globalspeed speed --server 1503 --duration 5 --connections 2 --max-mib 64
 ./globalspeed speed --server 1503 --duration 5 --json
 ./globalspeed dns example.com
@@ -63,10 +66,12 @@ wails build -tags desktop
 | macOS | Xcode Command Line Tools、系统 WebKit |
 | Linux | C 编译器、GTK 3、WebKitGTK 4.1、pkg-config |
 
+ICMP 测量需要系统 `ping`。Windows/macOS 通常已提供；Linux 可安装 `iputils-ping`，不可执行时会使用 TCP 回退。
+
 Ubuntu/Debian 的 Linux 开发环境：
 
 ```bash
-sudo apt-get install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+sudo apt-get install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev iputils-ping
 wails build -tags desktop,webkit2_41
 ```
 
@@ -74,12 +79,14 @@ wails build -tags desktop,webkit2_41
 
 ## 测量口径
 
-- HTTP 延迟：5 次请求发完到首个响应字节的中位数，包含节点处理时间；抖动是相邻样本差值绝对值的平均值。
-- TCP 建连时间仅作诊断；TUN、VPN 或透明代理可能使它只反映本机连接接管耗时。HTTP 延迟和 TCP 建连时间均不是 ICMP Ping。
+- Ping 优先调用系统 ICMP 工具，每包 64 字节、超时 3 秒；支持快速 Ping 时发 10 包、间隔 200 ms，否则发 5 包。平均值来自成功响应，抖动为相邻成功响应差值的绝对值均值。
+- ICMP 平均值低于 0.1 ms 时使用 TCP 回退，5 次建连、间隔 50 ms，按整数毫秒统计。界面明确显示 ICMP/TCP，失败显示“—”；TUN 或透明代理仍可能影响 TCP 数据。
+- 桌面默认自动选点。匹配接口根据公网出口及可选省份/运营商返回候选，依次探测，选第一个符合条件的节点；全部不符合时选第一项。自动匹配不保证节点接受测速会话。
+- CLI 用 `--auto` 测速，`select` 只选点、不测速。可传 `--province`、`--city`、`--operator`、`--ip` 和 `--network`（4 或 5，默认 5）；未提供的信息留空，不伪造 GPS、SIM 或公网 IP。
 - `--max-mib` 是上下行有效负载合计预算，下载、上传各分配一半，不包含延迟探测、协议及在途数据开销。
 - 上传仅统计服务器确认的完整请求；网络路径和节点负载会影响测量。
 - HTTP 客户端不使用系统 HTTP 代理，但仍受操作系统路由、TUN 和 VPN 影响。
-- 节点目录为 2026-10-04 快照，节点可能不可用。当前不支持 ICMP、traceroute、游戏或视频体验测试。
+- 节点目录为 2026-10-04 快照，节点可能不可用。当前不支持 traceroute、游戏或视频体验测试。
 
 ## 历史记录
 
@@ -98,7 +105,8 @@ wails build -tags desktop,webkit2_41
 ```text
 cmd/globalspeed/    CLI 入口
 internal/catalog/  节点目录
-internal/speed/    测速与延迟核心
+internal/speed/    测速与自动选点
+internal/ping/     ICMP 与 TCP 回退
 internal/history/  本地历史
 frontend/          桌面界面与资源嵌入
 main_desktop.go    Wails 入口与事件绑定

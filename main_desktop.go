@@ -33,8 +33,10 @@ func (a *App) StartSpeed(o speed.Options) error {
 	if err := o.Validate(); err != nil {
 		return err
 	}
-	if _, err := catalog.Find(o.ServerID); err != nil {
-		return err
+	if !o.Auto {
+		if _, err := catalog.Find(o.ServerID); err != nil {
+			return err
+		}
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()

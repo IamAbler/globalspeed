@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -144,51 +143,5 @@ func TestSessionRejectionsAreNotRetried(t *testing.T) {
 				t.Fatalf("attempts=%d err=%v", attempts.Load(), err)
 			}
 		})
-	}
-}
-
-type slowCloseConn struct {
-	net.Conn
-	close func()
-}
-
-func (c slowCloseConn) Close() error { c.close(); return nil }
-func TestTCPMeasurementExcludesClose(t *testing.T) {
-	clock := time.Unix(0, 0)
-	elapsed, err := tcpConnectSample(context.Background(), "test:80", func(context.Context, string, string) (net.Conn, error) {
-		clock = clock.Add(2 * time.Millisecond)
-		return slowCloseConn{close: func() { clock = clock.Add(70 * time.Millisecond) }}, nil
-	}, func() time.Time { return clock })
-	if err != nil || elapsed != 2 {
-		t.Fatalf("elapsed=%v err=%v", elapsed, err)
-	}
-}
-func TestHTTPLatencyRequiresRemoteResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(25 * time.Millisecond)
-		fmt.Fprint(w, "x")
-	}))
-	defer server.Close()
-	c := NewClient()
-	median, _, err := c.httpSamples(context.Background(), server.URL)
-	if err != nil || median < 20 {
-		t.Fatalf("response latency=%v err=%v", median, err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	_, _, err = c.httpSamples(ctx, server.URL)
-	if err == nil {
-		t.Fatal("cancelled probe reported valid latency")
-	}
-}
-func TestTCPStatisticsPreservesSampleOrder(t *testing.T) {
-	samples := []float64{9, 1, 7, 3, 5}
-	median, jitter, err := tcpStatistics(samples)
-	if err != nil || median != 5 || jitter != 5 || samples[0] != 9 {
-		t.Fatalf("median=%v jitter=%v samples=%v err=%v", median, jitter, samples, err)
-	}
-	_, _, err = tcpStatistics(nil)
-	if err == nil {
-		t.Fatal("empty samples must fail")
 	}
 }

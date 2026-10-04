@@ -71,7 +71,19 @@ token = MD5(a + b)
 
 - 下载对请求头敏感，使用原版 Chrome UA 与 Accept，禁用自动压缩；不添加 Cache-Control 或 Range。
 - 上传使用原版 Dalvik UA、Key、Cache-Control、Charset 和 multipart boundary。原版声明 900000000 字节并按时长断开；Go 使用有限长度 multipart，统计已确认负载。
-- 原 APK 支持 ICMP 和 TCP fallback。当前 TCP 值为 Go 建连耗时，仅作诊断；主界面 HTTP 延迟是新实现的首字节探测，不宣称等同原 APK Ping。
+- Ping 已迁移原版策略：快速模式 10 包、200 ms 间隔，否则 5 包；64 字节、3 秒超时。优先 ICMP，平均值低于 0.1 ms 时回退 TCP；TCP 5 次、50 ms 间隔、整数毫秒均值及整数抖动（差值和除以成功数）。ICMP 抖动按相邻成功回复差值和除以成功数减一。
+- `PingTask` 的 TCP packageLost 使用整数除法计算成功数/总数百分比，不能当作真实丢包率。JSON 的 `apkPackageLost` 保留这个兼容字段，`packetLossPct` 另行提供实际失败比例。
+- 使用系统 ping 跨平台适配参数和文本解析；Windows 原生命令的整数毫秒输出不能恢复亚毫秒精度，`time<1ms` 作为低于阈值处理并回退。APK 的 Android HttpURLConnection 与 Go TCP 建连实现不同，不能宣称系统栈、默认请求头和时序完全相同。
 - 真实节点验证完成会话、下载、上传和释放；部分节点不响应或拒绝申请，不能仅由这些现象推断客户端协议错误。
 
 关键证据类：`SpeedTestTask.java`、`SpeedUpDownTask.java`、`TcpConnection.java`、`PingTask.java`、`HttpUtil.java`。本地反编译目录为 `analysis/decompiled/sources/`。
+
+## 自动选点
+
+`ServerMatchTask` 请求 `https://dlcv2.cnspeedtest.cn:8443/dataServer/mobilematch_many.php`，参数为 ip、network、province、city、wifioper、mobileoperid、ipv6、model、pkg。Android networkCatg==2 时发送 4，否则发送 5。桌面默认发送 5；缺失位置和手机信息留空，目前为 IPv4 模式。
+
+服务返回有序数组，字段包括 hostid、pname、city、port、hostname、hostip。按原顺序对每项运行 `MyPingHelper.do_tcpping(...,2,port)`：超时 1 秒、两次 TCP 建连，取第一个 status==0 且平均值>0.1 ms 的候选。全部失败仍返回第一项，既不按 RTT 排序，也不另加会话验证。
+
+原版网络定位来自 Android IP/位置/SIM 信息。当前未迁移这部分设备权限；默认留空由服务结合请求来源匹配，可提供 CLI 参数或桌面节点筛选作为提示。候选节点地址需为有效公网 IP 和端口。
+
+已验证统计、中文/英文 Windows 响应解析、自动选点顺序、全失败回退和取消。实际南京电信 ICMP 测量：10/10 响应、平均 16.353 ms、抖动 1.7667 ms，并完成上下行各 512 KiB 与会话释放；选点服务亦完成真实查询。系统 ping 的 Windows/macOS 运行仍需对应平台验证。

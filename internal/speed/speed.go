@@ -11,9 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptrace"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,15 +19,18 @@ import (
 	"time"
 
 	"globalspeed/internal/catalog"
+	"globalspeed/internal/ping"
 )
 
 const MiB int64 = 1024 * 1024
 
 type Options struct {
-	ServerID        string `json:"serverId"`
-	DurationSeconds int    `json:"durationSeconds"`
-	Connections     int    `json:"connections"`
-	MaxMiB          int    `json:"maxMiB"`
+	Auto            bool         `json:"auto"`
+	Match           MatchOptions `json:"match"`
+	ServerID        string       `json:"serverId"`
+	DurationSeconds int          `json:"durationSeconds"`
+	Connections     int          `json:"connections"`
+	MaxMiB          int          `json:"maxMiB"`
 }
 
 func (o Options) Validate() error {
@@ -46,14 +47,16 @@ func (o Options) Validate() error {
 }
 
 type Progress struct {
-	HTTPMedianMS *float64 `json:"httpMedianMs,omitempty"`
-	HTTPJitterMS *float64 `json:"httpJitterMs,omitempty"`
-	Phase        string   `json:"phase"`
-	Mbps         float64  `json:"mbps"`
-	Bytes        int64    `json:"bytes"`
-	ElapsedMS    int64    `json:"elapsedMs"`
-	TCPMedianMS  *float64 `json:"tcpMedianMs,omitempty"`
-	TCPJitterMS  *float64 `json:"tcpJitterMs,omitempty"`
+	Ping         *ping.Result    `json:"ping,omitempty"`
+	Server       *catalog.Server `json:"server,omitempty"`
+	HTTPMedianMS *float64        `json:"httpMedianMs,omitempty"`
+	HTTPJitterMS *float64        `json:"httpJitterMs,omitempty"`
+	Phase        string          `json:"phase"`
+	Mbps         float64         `json:"mbps"`
+	Bytes        int64           `json:"bytes"`
+	ElapsedMS    int64           `json:"elapsedMs"`
+	TCPMedianMS  *float64        `json:"tcpMedianMs,omitempty"`
+	TCPJitterMS  *float64        `json:"tcpJitterMs,omitempty"`
 }
 type Transfer struct {
 	Mbps          float64 `json:"mbps"`
@@ -62,13 +65,14 @@ type Transfer struct {
 	BudgetReached bool    `json:"budgetReached"`
 }
 type Result struct {
+	Ping         *ping.Result   `json:"ping,omitempty"`
 	HTTPMedianMS *float64       `json:"httpMedianMs,omitempty"`
 	HTTPJitterMS *float64       `json:"httpJitterMs,omitempty"`
 	Time         time.Time      `json:"time"`
 	Server       catalog.Server `json:"server"`
 	Path         string         `json:"path"`
-	TCPMedianMS  float64        `json:"tcpMedianMs"`
-	TCPJitterMS  float64        `json:"tcpJitterMs"`
+	TCPMedianMS  float64        `json:"tcpMedianMs,omitempty"`
+	TCPJitterMS  float64        `json:"tcpJitterMs,omitempty"`
 	Download     Transfer       `json:"download"`
 	Upload       Transfer       `json:"upload"`
 	Released     bool           `json:"released"`
@@ -161,111 +165,17 @@ func (c *Client) session(ctx context.Context, base string) (string, error) {
 	return key, nil
 }
 
-// tcpConnectSample times DialContext only, excluding local socket shutdown.
-func tcpConnectSample(ctx context.Context, address string, dial func(context.Context, string, string) (net.Conn, error), now func() time.Time) (float64, error) {
-	start := now()
-	conn, err := dial(ctx, "tcp", address)
-	elapsed := now().Sub(start)
-	if err != nil {
-		return 0, err
-	}
-	conn.Close()
-	return float64(elapsed) / float64(time.Millisecond), nil
-}
-func tcpSamples(ctx context.Context, address string) (float64, float64, error) {
-	samples := make([]float64, 0, 5)
-	dialer := &net.Dialer{Timeout: 3 * time.Second}
-	for i := 0; i < 5; i++ {
-		if i > 0 {
-			timer := time.NewTimer(150 * time.Millisecond)
-			select {
-			case <-timer.C:
-			case <-ctx.Done():
-				timer.Stop()
-				return 0, 0, ctx.Err()
-			}
-		}
-		elapsed, err := tcpConnectSample(ctx, address, dialer.DialContext, time.Now)
-		if err != nil {
-			return 0, 0, fmt.Errorf("TCP 延迟探测失败: %w", err)
-		}
-		samples = append(samples, elapsed)
-	}
-	return tcpStatistics(samples)
-}
-func tcpStatistics(samples []float64) (float64, float64, error) {
-	if len(samples) < 2 {
-		return 0, 0, errors.New("TCP 延迟样本不足")
-	}
-	jitter := 0.0
-	for i := 1; i < len(samples); i++ {
-		d := samples[i] - samples[i-1]
-		if d < 0 {
-			d = -d
-		}
-		jitter += d
-	}
-	jitter /= float64(len(samples) - 1)
-	ordered := append([]float64(nil), samples...)
-	sort.Float64s(ordered)
-	median := ordered[len(ordered)/2]
-	if len(ordered)%2 == 0 {
-		median = (ordered[len(ordered)/2-1] + median) / 2
-	}
-	return median, jitter, nil
-}
-
-// HTTP latency requires a response, so a locally accepted TCP connection
-// alone cannot produce a successful sample. It includes server processing.
-func (c *Client) httpSamples(ctx context.Context, target string) (float64, float64, error) {
-	samples := make([]float64, 0, 5)
-	for i := 0; i < 5; i++ {
-		if i > 0 {
-			timer := time.NewTimer(150 * time.Millisecond)
-			select {
-			case <-timer.C:
-			case <-ctx.Done():
-				timer.Stop()
-				return 0, 0, ctx.Err()
-			}
-		}
-		sampleCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
-		var wrote, first time.Time
-		trace := &httptrace.ClientTrace{WroteRequest: func(info httptrace.WroteRequestInfo) {
-			if info.Err == nil {
-				wrote = time.Now()
-			}
-		}, GotFirstResponseByte: func() { first = time.Now() }}
-		req, err := http.NewRequestWithContext(httptrace.WithClientTrace(sampleCtx, trace), http.MethodGet, target, nil)
-		if err != nil {
-			cancel()
-			return 0, 0, err
-		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36")
-		req.Header.Set("Accept", "*/*")
-		resp, err := c.HTTP.Do(req)
-		if err != nil {
-			cancel()
-			return 0, 0, errors.New("HTTP 延迟探测未收到有效响应")
-		}
-		// Read only one payload byte; the large download is stopped immediately.
-		_, readErr := io.CopyN(io.Discard, resp.Body, 1)
-		resp.Body.Close()
-		cancel()
-		if resp.StatusCode != http.StatusOK || readErr != nil || wrote.IsZero() || first.IsZero() || first.Before(wrote) {
-			return 0, 0, fmt.Errorf("HTTP 延迟探测响应无效（HTTP %d）", resp.StatusCode)
-		}
-		samples = append(samples, float64(first.Sub(wrote))/float64(time.Millisecond))
-	}
-	return tcpStatistics(samples)
-}
 func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (result Result, err error) {
 	if err = o.Validate(); err != nil {
 		return
 	}
 	result.Time = time.Now()
 	result.Path = "device-to-carrier"
-	result.Server, err = catalog.Find(o.ServerID)
+	if o.Auto {
+		result.Server, err = c.Match(ctx, o.Match, progress)
+	} else {
+		result.Server, err = catalog.Find(o.ServerID)
+	}
 	if err != nil {
 		return
 	}
@@ -278,12 +188,16 @@ func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (r
 	if progress != nil {
 		progress(Progress{Phase: "latency"})
 	}
-	result.TCPMedianMS, result.TCPJitterMS, err = tcpSamples(ctx, address)
+	measured, pingErr := ping.Measure(ctx, result.Server.IP, result.Server.Port)
+	result.Ping = &measured
+	if pingErr != nil {
+		err = pingErr
+	}
 	if err != nil {
 		return
 	}
 	if progress != nil {
-		progress(Progress{Phase: "session", TCPMedianMS: &result.TCPMedianMS, TCPJitterMS: &result.TCPJitterMS})
+		progress(Progress{Phase: "session", Ping: result.Ping})
 	}
 	key, sessionErr := c.session(ctx, base)
 	if sessionErr != nil {
@@ -298,19 +212,6 @@ func (c *Client) Run(ctx context.Context, o Options, progress func(Progress)) (r
 			err = errors.Join(err, fmt.Errorf("会话释放未确认: %w", releaseErr))
 		}
 	}()
-	if progress != nil {
-		progress(Progress{Phase: "latency"})
-	}
-	httpMedian, httpJitter, latencyErr := c.httpSamples(ctx, base+"/speed/File(1G).dl?r="+strconv.FormatInt(time.Now().Unix(), 10)+"&key="+url.QueryEscape(key))
-	if latencyErr != nil {
-		err = fmt.Errorf("HTTP 延迟阶段: %w", latencyErr)
-		return
-	}
-	result.HTTPMedianMS = &httpMedian
-	result.HTTPJitterMS = &httpJitter
-	if progress != nil {
-		progress(Progress{Phase: "latency", HTTPMedianMS: &httpMedian, HTTPJitterMS: &httpJitter})
-	}
 	budget := int64(o.MaxMiB) * MiB / 2
 	result.Download, err = c.transfer(ctx, o, base, key, "download", budget, progress)
 	if err != nil {

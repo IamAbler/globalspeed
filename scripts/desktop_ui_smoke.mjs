@@ -13,9 +13,9 @@ try{
   const emit=(name,data)=>listeners[name]?.(data);
   window.runtime={EventsOn:(name,handler)=>{listeners[name]=handler},EventsOff:name=>delete listeners[name]};
   window.go={main:{App:{ListServers:async()=>servers,History:async()=>records,StartSpeed:async options=>{
-   window.__options=options;emit('speed:progress',{phase:'latency',mbps:0,bytes:0,elapsedMs:0,httpMedianMs:29.28,httpJitterMs:1.4});n=0;clearInterval(timer);timer=setInterval(()=>{
+   window.__options=options;if(options.auto){options.serverId='1503';emit('speed:progress',{phase:'selected',server:servers.find(s=>s.hostid==='1503')})};emit('speed:progress',{phase:'session',mbps:0,bytes:0,elapsedMs:0,ping:{method:'icmp',averageMs:29.28,jitterMs:1.4,status:0,sent:10,received:10,packetLossPct:0}});n=0;clearInterval(timer);timer=setInterval(()=>{
     n++;emit('speed:progress',{phase:n<5?'download':'upload',mbps:n*12,bytes:n*1024,elapsedMs:n*80});
-    if(n===10){clearInterval(timer);const r={time:new Date().toISOString(),server:servers.find(s=>s.hostid===options.serverId),path:'device-to-carrier',tcpMedianMs:.5,tcpJitterMs:.1,httpMedianMs:29.28,httpJitterMs:1.4,download:{mbps:92,bytes:1000000,elapsedMs:300,budgetReached:false},upload:{mbps:81,bytes:1000000,elapsedMs:400,budgetReached:false},released:true};records=[r,...records];emit('speed:result',r)}
+    if(n===10){clearInterval(timer);const r={time:new Date().toISOString(),server:servers.find(s=>s.hostid===options.serverId),path:'device-to-carrier',tcpMedianMs:.5,tcpJitterMs:.1,ping:{method:'icmp',averageMs:29.28,jitterMs:1.4,status:0,sent:10,received:10,packetLossPct:0},download:{mbps:92,bytes:1000000,elapsedMs:300,budgetReached:false},upload:{mbps:81,bytes:1000000,elapsedMs:400,budgetReached:false},released:true};records=[r,...records];emit('speed:result',r)}
    },80);
   },StopSpeed:async()=>{clearInterval(timer);emit('speed:error','context canceled')}}}};
  },{servers});
@@ -34,6 +34,7 @@ try{
  await page.getByRole('button',{name:'历史记录',exact:true}).click();await page.getByRole('cell',{name:'92.00',exact:true}).waitFor();
  await page.getByRole('button',{name:'网络测速',exact:true}).click();await page.getByRole('button',{name:'更换节点',exact:true}).click();await page.getByPlaceholder('搜索名称、地址或城市').fill('南京');assert.ok(await page.getByRole('row').count()>1);
  await page.getByRole('button',{name:'网络测速',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByRole('button',{name:'停止测速',exact:true}).click();await page.getByText('测速已停止',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'更换节点',exact:true}).click();await page.getByRole('button',{name:'自动选择节点',exact:true}).click();await page.getByRole('button',{name:'开始测速',exact:true}).click();await page.getByText('测速完成 · 会话已释放',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__options.auto),true);
  await page.getByRole('button',{name:'设置',exact:true}).click();const beforeTheme=await page.evaluate(()=>document.documentElement.dataset.theme);await page.getByRole('switch',{name:'深色模式'}).click();assert.notEqual(await page.evaluate(()=>document.documentElement.dataset.theme),beforeTheme);
  assert.deepEqual(errors,[]);console.log('Desktop UI passed: Fluent rendering, node filters, Go options and events, history, search, stop, theme.');
 }finally{await browser.close()}

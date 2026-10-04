@@ -31,7 +31,7 @@ func emit(v any) error {
 }
 func run(args []string) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "--help" {
-		fmt.Println("GlobalSpeed · 本机直连\n\n  globalspeed nodes [--province 浙江] [--operator 电信] [--json]\n  globalspeed speed --server 5 [--duration 5] [--connections 2] [--max-mib 64] [--json] [--no-history]\n  globalspeed dns www.baidu.com\n  globalspeed history [--path]\n\nCtrl+C 停止测速，自动释放节点会话。流量预算不包含 HTTP/TCP 头部。")
+		fmt.Println("GlobalSpeed · 本机直连\n\n  globalspeed nodes [--province 浙江] [--operator 电信] [--json]\n  globalspeed speed [--auto | --server 5] [--duration 5] [--connections 2] [--max-mib 64] [--json] [--no-history]\n  globalspeed select [--province 江苏] [--operator 电信]\n  globalspeed dns www.baidu.com\n  globalspeed history [--path]\n\nCtrl+C 停止测速，自动释放节点会话。流量预算不包含 HTTP/TCP 头部。")
 		return nil
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -58,6 +58,12 @@ func run(args []string) error {
 	case "speed":
 		f := flag.NewFlagSet("speed", flag.ContinueOnError)
 		id := f.String("server", "", "节点 ID（nodes 命令查询）")
+		auto := f.Bool("auto", false, "按原版流程自动选点")
+		province := f.String("province", "", "自动选点省份")
+		city := f.String("city", "", "自动选点城市")
+		operator := f.String("operator", "", "自动选点运营商")
+		publicIP := f.String("ip", "", "自动选点公网 IP（可留空）")
+		network := f.Int("network", 5, "原版选点网络参数 4/5")
 		duration := f.Int("duration", 5, "每阶段秒数")
 		connections := f.Int("connections", 2, "并发数")
 		maxMiB := f.Int("max-mib", 64, "总负载预算 MiB")
@@ -66,10 +72,13 @@ func run(args []string) error {
 		if err := f.Parse(args[1:]); err != nil {
 			return err
 		}
-		if *id == "" {
-			return errors.New("请用 --server 指定节点 ID")
+		if *id == "" && !*auto {
+			return errors.New("请用 --auto 或 --server 指定节点")
 		}
-		options := speed.Options{ServerID: *id, DurationSeconds: *duration, Connections: *connections, MaxMiB: *maxMiB}
+		if *auto && *id != "" {
+			return errors.New("--auto 与 --server 不能同时使用")
+		}
+		options := speed.Options{Auto: *auto, Match: speed.MatchOptions{Province: *province, City: *city, Operator: *operator, IP: *publicIP, Network: *network}, ServerID: *id, DurationSeconds: *duration, Connections: *connections, MaxMiB: *maxMiB}
 		var progress func(speed.Progress)
 		if !*asJSON {
 			progress = func(p speed.Progress) {
@@ -91,8 +100,23 @@ func run(args []string) error {
 		if *asJSON {
 			return emit(result)
 		}
-		fmt.Printf("%s · %s\nHTTP 延迟 %.2f ms · 抖动 %.2f ms\n下载 %.2f Mbps · 上传 %.2f Mbps\n流量 %.2f MiB · 会话已释放 %t\n", result.Server.Name, result.Path, *result.HTTPMedianMS, *result.HTTPJitterMS, result.Download.Mbps, result.Upload.Mbps, float64(result.Download.Bytes+result.Upload.Bytes)/float64(speed.MiB), result.Released)
+		fmt.Printf("%s · %s\n%s\n下载 %.2f Mbps · 上传 %.2f Mbps\n流量 %.2f MiB · 会话已释放 %t\n", result.Server.Name, result.Path, result.Ping.Description(), result.Download.Mbps, result.Upload.Mbps, float64(result.Download.Bytes+result.Upload.Bytes)/float64(speed.MiB), result.Released)
 		return nil
+	case "select":
+		f := flag.NewFlagSet("select", flag.ContinueOnError)
+		province := f.String("province", "", "省份")
+		city := f.String("city", "", "城市")
+		operator := f.String("operator", "", "运营商")
+		publicIP := f.String("ip", "", "公网 IP（可留空）")
+		network := f.Int("network", 5, "原版网络参数 4/5")
+		if err := f.Parse(args[1:]); err != nil {
+			return err
+		}
+		server, err := speed.NewClient().Match(ctx, speed.MatchOptions{Province: *province, City: *city, Operator: *operator, IP: *publicIP, Network: *network}, nil)
+		if err != nil {
+			return err
+		}
+		return emit(server)
 	case "dns":
 		if len(args) != 2 || strings.ContainsAny(args[1], " /\\") {
 			return errors.New("用法: globalspeed dns 域名")
