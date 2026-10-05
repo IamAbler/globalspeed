@@ -36,7 +36,7 @@ func emit(v any) error {
 }
 func run(args []string) error {
 	if len(args) > 0 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
-		fmt.Println("GlobalSpeed · 本机直连\n\n  globalspeed [--server-id 5] [--format human-readable|json] [--progress yes|no]\n  globalspeed nodes [--province 浙江] [--operator 电信] [--json]\n  globalspeed speed [--auto | --server 5] [--duration 5] [--connections 2] [--max-mib 64] [--json] [--no-history]\n  globalspeed select [--province 江苏] [--operator 电信]\n  globalspeed dns www.baidu.com\n  globalspeed history [--path]\n\nCtrl+C 停止测速，自动释放节点会话。流量预算不包含 HTTP/TCP 头部。")
+		fmt.Println("GlobalSpeed · 本机直连\n\n  globalspeed [--server-id 5] [--format human-readable|json] [--progress yes|no]\n  globalspeed nodes [--province 浙江] [--operator 电信] [--json]\n  globalspeed speed [--auto | --server 5] [--duration 5] [--connections 2] [--max-mib 64] [--json] [--no-history]\n  globalspeed update [--json]\n  globalspeed nodes --path\n  globalspeed select [--province 江苏] [--operator 电信]\n  globalspeed dns www.baidu.com\n  globalspeed history [--path]\n\nCtrl+C 停止测速，自动释放节点会话。流量预算不包含 HTTP/TCP 头部。")
 		return nil
 	}
 	if len(args) > 0 && (args[0] == "--version" || args[0] == "-V") {
@@ -56,8 +56,24 @@ func run(args []string) error {
 		province := f.String("province", "", "省份")
 		operator := f.String("operator", "", "运营商")
 		asJSON := f.Bool("json", false, "JSON 输出")
+		noUpdate := f.Bool("no-update", false, "使用本地目录，不检查更新")
+		showPath := f.Bool("path", false, "显示加密目录路径")
 		if err := f.Parse(args[1:]); err != nil {
 			return err
+		}
+		if *showPath {
+			path, err := catalog.Path()
+			if err != nil {
+				return err
+			}
+			fmt.Println(path)
+			return nil
+		}
+		if !*noUpdate {
+			refreshCatalog(ctx)
+		}
+		if ctx.Err() != nil {
+			return speed.PublicError(ctx.Err())
 		}
 		all := catalog.Servers(*province, *operator)
 		if *asJSON {
@@ -90,6 +106,7 @@ func run(args []string) error {
 		maxMiB := f.Int("max-mib", 64, "总负载预算 MiB")
 		asJSON := f.Bool("json", false, "JSON 输出")
 		noHistory := f.Bool("no-history", false, "不保存本地历史")
+		noUpdate := f.Bool("no-update", false, "使用本地目录，不检查更新")
 		if err := f.Parse(args[1:]); err != nil {
 			return err
 		}
@@ -110,13 +127,19 @@ func run(args []string) error {
 		if err := options.Validate(); err != nil {
 			return err
 		}
+		if *network != 4 && *network != 5 {
+			return speed.Failure(136, nil)
+		}
+		if !*noUpdate {
+			refreshCatalog(ctx)
+		}
+		if ctx.Err() != nil {
+			return speed.PublicError(ctx.Err())
+		}
 		if !options.Auto {
 			if _, err := catalog.Find(options.ServerID); err != nil {
 				return speed.Failure(139, err)
 			}
-		}
-		if *network != 4 && *network != 5 {
-			return speed.Failure(136, nil)
 		}
 		p := presentation{out: os.Stdout, live: !jsonOutput && !*noProgress && *progressMode != "no" && (isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())), duration: *duration, budget: int64(*maxMiB) * speed.MiB / 2}
 		defer p.clear()
@@ -183,6 +206,24 @@ func run(args []string) error {
 		}
 		p.complete(result)
 		return nil
+	case "update":
+		f := flag.NewFlagSet("update", flag.ContinueOnError)
+		asJSON := f.Bool("json", false, "JSON 输出")
+		if err := f.Parse(args[1:]); err != nil {
+			return err
+		}
+		result, err := catalog.Update(ctx)
+		if ctx.Err() != nil {
+			return speed.PublicError(ctx.Err())
+		}
+		if err != nil {
+			return err
+		}
+		if *asJSON {
+			return emit(result)
+		}
+		fmt.Printf("节点目录已检查：%d 个节点\n%s\n", result.Count, result.Path)
+		return nil
 	case "select":
 		f := flag.NewFlagSet("select", flag.ContinueOnError)
 		province := f.String("province", "", "省份")
@@ -193,6 +234,7 @@ func run(args []string) error {
 		if err := f.Parse(args[1:]); err != nil {
 			return err
 		}
+		refreshCatalog(ctx)
 		server, err := speed.NewClient().Match(ctx, speed.MatchOptions{Province: *province, City: *city, Operator: *operator, IP: *publicIP, Network: *network}, nil)
 		if err != nil {
 			return err
@@ -228,5 +270,11 @@ func run(args []string) error {
 		return emit(all)
 	default:
 		return fmt.Errorf("未知命令 %q；运行 globalspeed help 查看用法", args[0])
+	}
+}
+
+func refreshCatalog(ctx context.Context) {
+	if _, err := catalog.Update(ctx); err != nil && ctx.Err() == nil {
+		fmt.Fprintln(os.Stderr, "[warning] 节点目录更新失败，使用本地目录:", err)
 	}
 }

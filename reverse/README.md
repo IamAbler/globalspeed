@@ -45,7 +45,7 @@ python3 reverse/scripts/decrypt_business.py
 
 加密目录：`https://down.cnspeedtest.cn:8043/TaierAndroid/Config/serverlist_encrypt.json`。
 
-样本原生代码提供 DES/ECB/PKCS5Padding 解密相关参数。已取得并校验的目录包含 606 个节点、31 个省级地区；快照在开发目录 `internal/catalog/servers.json`。APK 内原始模块目录保存在 `internal/catalog/tests.json`。
+样本原生代码提供 DES/ECB/PKCS5Padding 解密相关参数。已取得并校验的目录包含 606 个节点、31 个省级地区；内置快照在 `internal/catalog/serverlist_encrypt.json`，保存厂商原始加密文件。APK 内原始模块目录保存在 `internal/catalog/tests.json`。
 
 ## 原版协议
 
@@ -110,3 +110,11 @@ token = MD5(a + b)
 ## 桌面图标
 
 用户指定复用样本图标。Manifest 的 application icon 为 `0x7f08016c`，`R.drawable.taierspeed_logo` 对应 `res/drawable-hdpi-v4/taierspeed_logo.png`。原始 512×512 PNG 原样提取到 `build/appicon.png`，未重绘或删除图片内文字。Windows/macOS 由 Wails 转换并打包；Linux 嵌入原 PNG 并提供启动器文件。
+
+## 目录密钥与更新复现
+
+密钥本地固定在 `libGSCore.so`，不是云端申请。`Jni.e()` 位于 `0x7aa5c`，读取全局 `0x10d028` 的指针，指向 `0xd90b3` 的字节串 `dw!@#$%^`，转换成反转的十六进制表示；Java `DesUtil.constDecrypt` 还原八字节 DES key。目录是十六进制文本，DES/ECB/PKCS5Padding，解密后 `DesUtil.unPkcsPadding` 还会去除 1–7 的内层填充，8 则保留。Android JSONTokener 接受末尾 ASCII 控制空白；Go 解密也处理这一兼容细节。
+
+云端索引的 `serverlist_encrypt_url` 给出 filename 下载地址和密文文件 MD5，没有目录密钥字段。`SettingsHelper.updatefile_fromserver` 先比较本地密文 MD5，再下载临时文件、校验并替换。Go 保留原始下载字节、校验 MD5、解密验证目录后用临时文件替换；使用默认配置目录中的 `serverlist.json`，不写解密后的目录文件。更新仅接受 HTTPS 厂商域名，不采用索引中的其他设备配置。
+
+内置快照仍为 MD5 `6d492c0d5d07e790ac8e609097879b74`、606 节点。2026-10-05 实测更新取得 604 节点，证明运行目录使用在线数据而非固定快照。CLI `update` 手动更新，`nodes --path` 显示路径，`nodes/speed --no-update` 跳过更新检查。

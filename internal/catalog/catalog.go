@@ -2,14 +2,14 @@ package catalog
 
 import (
 	"embed"
-	"encoding/json"
+
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 )
 
-//go:embed servers.json tests.json
+//go:embed serverlist_encrypt.json tests.json
 var assets embed.FS
 
 type Server struct {
@@ -25,11 +25,7 @@ type Server struct {
 }
 
 func Servers(province, operator string) []Server {
-	data, _ := assets.ReadFile("servers.json")
-	var all []Server
-	if err := json.Unmarshal(data, &all); err != nil {
-		panic(err)
-	}
+	all := defaultStore.servers()
 	out := make([]Server, 0, len(all))
 	for _, s := range all {
 		if (province == "" || strings.Contains(s.Province, province)) && (operator == "" || s.Operator == operator) {

@@ -14,7 +14,7 @@
 
 ## 功能
 
-- 606 个节点、31 个地区，按省份、运营商和关键词选择。
+- 在线更新节点目录，按省份、运营商和关键词选择；内置加密快照含 606 个节点、31 个地区。
 - 下载与上传测速，可设置采样时长、并发连接和流量预算。
 - ICMP Ping 平均延迟与抖动；不可用时回退到 TCP。
 - 启动后自动匹配并显示测速节点，点击 GO 使用已选结果，也可手动换点。
@@ -32,6 +32,9 @@ go build -o globalspeed ./cmd/globalspeed
 ./globalspeed -s 1503 --duration 5    # 指定节点
 ./globalspeed -s 1503 -f json         # 紧凑 JSON
 ./globalspeed --progress no          # 关闭进度
+./globalspeed update                 # 检查并更新加密节点目录
+./globalspeed nodes --path           # 显示目录缓存路径
+./globalspeed nodes --no-update      # 只读本地目录
 ./globalspeed nodes --province 江苏 --operator 电信
 ./globalspeed speed --auto --duration 5 --connections 2 --max-mib 64
 ./globalspeed select --province 江苏 --operator 电信
@@ -99,7 +102,19 @@ wails build -tags desktop,webkit2_41
 - `--max-mib` 是上下行有效负载合计预算，下载、上传各分配一半，不包含延迟探测、协议及在途数据开销。
 - 上传仅统计服务器确认的完整请求；网络路径和节点负载会影响测量。
 - HTTP 客户端不使用系统 HTTP 代理，但仍受操作系统路由、TUN 和 VPN 影响。
-- 节点目录为 2026-10-04 快照，节点可能不可用。当前不支持 traceroute、游戏或视频体验测试。
+- 桌面启动及 CLI 的 nodes、speed、select 会检查节点目录更新，CLI 的 nodes / speed 支持 `--no-update`。内置快照为 2026-10-04，在线目录可能增减节点，节点也可能不可用。当前不支持 traceroute、游戏或视频体验测试。
+
+## 节点目录缓存
+
+桌面和 CLI 共用加密目录，保存厂商原始密文，运行时才解密。下载目录须通过配置索引的 MD5 校验及内容校验，再替换缓存；更新失败保留已有目录，缓存无效时使用内置加密快照。
+
+默认路径与历史记录目录相同，文件名为 `serverlist.json`（内容为加密十六进制文本）：
+
+- Windows：`%AppData%\globalspeed\serverlist.json`
+- macOS：`~/Library/Application Support/globalspeed/serverlist.json`
+- Linux：`${XDG_CONFIG_HOME:-~/.config}/globalspeed/serverlist.json`
+
+用 `globalspeed nodes --path` 查看实际位置，`globalspeed update` 手动检查更新。更新检查有 10 秒总超时；测速仍由本机直连节点。
 
 ## 历史记录
 

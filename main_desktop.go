@@ -39,7 +39,10 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.selected = make(map[string]catalog.Server)
 }
-func (a *App) ListServers() []catalog.Server    { return catalog.Servers("", "") }
+func (a *App) ListServers() []catalog.Server {
+	_, _ = catalog.Update(a.ctx)
+	return catalog.Servers("", "")
+}
 func (a *App) History() ([]speed.Result, error) { return history.Load() }
 func (a *App) NetworkInfo() (networkinfo.Info, error) {
 	return networkinfo.Lookup(a.ctx, speed.NewClient().HTTP, networkinfo.Endpoint)

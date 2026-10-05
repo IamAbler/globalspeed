@@ -3,8 +3,9 @@
 import {chromium} from '../reverse/.tools/browser/node_modules/playwright/index.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
-const servers=JSON.parse(await fs.readFile('internal/catalog/servers.json','utf8'));
+const servers=JSON.parse(execFileSync('go',['run','-buildvcs=false','./cmd/globalspeed','nodes','--no-update','--json'],{encoding:'utf8',env:{...process.env,GOCACHE:path.resolve('.buildcache/go'),GOMODCACHE:path.resolve('.buildcache/mod')}}));
 const browser=await chromium.launch({headless:true,executablePath:'/home/abler/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell',args:['--no-sandbox'],env:{...process.env,LD_LIBRARY_PATH:path.resolve('reverse/.tools/browser-libs/usr/lib/x86_64-linux-gnu')}});
 try{
  const page=await browser.newPage({viewport:{width:520,height:720}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
