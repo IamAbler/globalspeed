@@ -28,6 +28,10 @@
 
 ```bash
 go build -o globalspeed ./cmd/globalspeed
+./globalspeed                        # 默认自动选择节点并测速
+./globalspeed -s 1503 --duration 5    # 指定节点
+./globalspeed -s 1503 -f json         # 紧凑 JSON
+./globalspeed --progress no          # 关闭进度
 ./globalspeed nodes --province 江苏 --operator 电信
 ./globalspeed speed --auto --duration 5 --connections 2 --max-mib 64
 ./globalspeed select --province 江苏 --operator 电信
@@ -37,6 +41,8 @@ go build -o globalspeed ./cmd/globalspeed
 ./globalspeed history
 ./globalspeed history --path
 ```
+
+默认输出对齐的 Server、ISP、公网 IP、Idle Latency、Download、Upload 和 Packet Loss 摘要。TCP 回退时显示 TCP Failures。交互终端内显示单行速度与进度条，重定向输出时不使用回车覆盖或 ANSI 控制符；`--progress no` 可禁用进度。`-f json` 输出紧凑 JSON，`-f json-pretty` 和原有 `--json` 输出缩进 JSON，字段与单位保持原格式。
 
 Windows 下使用 `globalspeed.exe`。`--no-history` 可禁用本次历史保存，Ctrl+C 停止测试并释放会话。
 
@@ -89,7 +95,7 @@ wails build -tags desktop,webkit2_41
 - Ping 优先调用系统 ICMP 工具，每包 64 字节、超时 3 秒；支持快速 Ping 时发 10 包、间隔 200 ms，否则发 5 包。平均值来自成功响应，抖动为相邻成功响应差值的绝对值均值。
 - ICMP 平均值低于 0.1 ms 时使用 TCP 回退，5 次建连、间隔 50 ms，按整数毫秒统计。界面明确显示 ICMP/TCP，失败显示“—”；TUN 或透明代理仍可能影响 TCP 数据。
 - 桌面默认自动选点。匹配接口根据公网出口及可选省份/运营商返回候选，依次探测，选第一个符合条件的节点；全部不符合时选第一项。自动匹配不保证节点接受测速会话。
-- CLI 用 `--auto` 测速，`select` 只选点、不测速。可传 `--province`、`--city`、`--operator`、`--ip` 和 `--network`（4 或 5，默认 5）；未提供的信息留空，不伪造 GPS、SIM 或公网 IP。
+- CLI 直接运行或运行 `speed` 默认自动选点，`--server` / `--server-id` / `-s` 指定节点。`select` 只选点、不测速。可传 `--province`、`--city`、`--operator`、`--ip` 和 `--network`（4 或 5，默认 5）；测速时优先使用显式提示，否则使用 IPIP 返回的信息。公网信息获取失败时留空，由匹配服务识别出口。
 - `--max-mib` 是上下行有效负载合计预算，下载、上传各分配一半，不包含延迟探测、协议及在途数据开销。
 - 上传仅统计服务器确认的完整请求；网络路径和节点负载会影响测量。
 - HTTP 客户端不使用系统 HTTP 代理，但仍受操作系统路由、TUN 和 VPN 影响。

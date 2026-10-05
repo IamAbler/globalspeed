@@ -13,14 +13,19 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/mattn/go-isatty"
 	"globalspeed/internal/catalog"
 	"globalspeed/internal/history"
+	"globalspeed/internal/networkinfo"
 	"globalspeed/internal/speed"
 )
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "错误:", err)
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
+		fmt.Fprintln(os.Stderr, "[error]", err)
 		os.Exit(1)
 	}
 }
@@ -30,9 +35,18 @@ func emit(v any) error {
 	return encoder.Encode(v)
 }
 func run(args []string) error {
-	if len(args) == 0 || args[0] == "help" || args[0] == "--help" {
-		fmt.Println("GlobalSpeed · 本机直连\n\n  globalspeed nodes [--province 浙江] [--operator 电信] [--json]\n  globalspeed speed [--auto | --server 5] [--duration 5] [--connections 2] [--max-mib 64] [--json] [--no-history]\n  globalspeed select [--province 江苏] [--operator 电信]\n  globalspeed dns www.baidu.com\n  globalspeed history [--path]\n\nCtrl+C 停止测速，自动释放节点会话。流量预算不包含 HTTP/TCP 头部。")
+	if len(args) > 0 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
+		fmt.Println("GlobalSpeed · 本机直连\n\n  globalspeed [--server-id 5] [--format human-readable|json] [--progress yes|no]\n  globalspeed nodes [--province 浙江] [--operator 电信] [--json]\n  globalspeed speed [--auto | --server 5] [--duration 5] [--connections 2] [--max-mib 64] [--json] [--no-history]\n  globalspeed select [--province 江苏] [--operator 电信]\n  globalspeed dns www.baidu.com\n  globalspeed history [--path]\n\nCtrl+C 停止测速，自动释放节点会话。流量预算不包含 HTTP/TCP 头部。")
 		return nil
+	}
+	if len(args) > 0 && (args[0] == "--version" || args[0] == "-V") {
+		fmt.Println("GlobalSpeed 0.1.0")
+		return nil
+	}
+	if len(args) == 0 {
+		args = []string{"speed"}
+	} else if strings.HasPrefix(args[0], "-") {
+		args = append([]string{"speed"}, args...)
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
@@ -58,12 +72,19 @@ func run(args []string) error {
 	case "speed":
 		f := flag.NewFlagSet("speed", flag.ContinueOnError)
 		id := f.String("server", "", "节点 ID（nodes 命令查询）")
-		auto := f.Bool("auto", false, "按原版流程自动选点")
+		f.StringVar(id, "server-id", "", "节点 ID")
+		f.StringVar(id, "s", "", "节点 ID")
+		format := f.String("format", "human-readable", "输出格式：human-readable / json / json-pretty")
+		f.StringVar(format, "f", "human-readable", "输出格式")
+		progressMode := f.String("progress", "auto", "实时进度：yes / no（默认仅终端显示）")
+		f.StringVar(progressMode, "p", "auto", "实时进度：yes / no")
+		noProgress := f.Bool("no-progress", false, "禁用实时进度")
+		auto := f.Bool("auto", false, "自动选择节点")
 		province := f.String("province", "", "自动选点省份")
 		city := f.String("city", "", "自动选点城市")
 		operator := f.String("operator", "", "自动选点运营商")
 		publicIP := f.String("ip", "", "自动选点公网 IP（可留空）")
-		network := f.Int("network", 5, "原版选点网络参数 4/5")
+		network := f.Int("network", 5, "选点网络参数 4/5")
 		duration := f.Int("duration", 5, "每阶段秒数")
 		connections := f.Int("connections", 2, "并发数")
 		maxMiB := f.Int("max-mib", 64, "总负载预算 MiB")
@@ -72,35 +93,95 @@ func run(args []string) error {
 		if err := f.Parse(args[1:]); err != nil {
 			return err
 		}
-		if *id == "" && !*auto {
-			return errors.New("请用 --auto 或 --server 指定节点")
+		if f.NArg() != 0 {
+			return errors.New("不支持额外位置参数；运行 globalspeed --help 查看用法")
 		}
 		if *auto && *id != "" {
 			return errors.New("--auto 与 --server 不能同时使用")
 		}
-		options := speed.Options{Auto: *auto, Match: speed.MatchOptions{Province: *province, City: *city, Operator: *operator, IP: *publicIP, Network: *network}, ServerID: *id, DurationSeconds: *duration, Connections: *connections, MaxMiB: *maxMiB}
-		var progress func(speed.Progress)
-		if !*asJSON {
-			progress = func(p speed.Progress) {
-				fmt.Fprintf(os.Stderr, "\r%-10s %8.2f Mbps · %.2f MiB    ", p.Phase, p.Mbps, float64(p.Bytes)/float64(speed.MiB))
+		if *format != "human-readable" && *format != "json" && *format != "json-pretty" {
+			return errors.New("--format 必须为 human-readable、json 或 json-pretty")
+		}
+		if *progressMode != "auto" && *progressMode != "yes" && *progressMode != "no" {
+			return errors.New("--progress 必须为 yes 或 no")
+		}
+		jsonOutput := *asJSON || *format != "human-readable"
+		options := speed.Options{Auto: *id == "", Match: speed.MatchOptions{Province: *province, City: *city, Operator: *operator, IP: *publicIP, Network: *network}, ServerID: *id, DurationSeconds: *duration, Connections: *connections, MaxMiB: *maxMiB}
+		if err := options.Validate(); err != nil {
+			return err
+		}
+		if !options.Auto {
+			if _, err := catalog.Find(options.ServerID); err != nil {
+				return speed.Failure(139, err)
 			}
 		}
-		result, err := speed.NewClient().Run(ctx, options, progress)
-		if !*asJSON {
-			fmt.Fprintln(os.Stderr)
+		if *network != 4 && *network != 5 {
+			return speed.Failure(136, nil)
 		}
+		p := presentation{out: os.Stdout, live: !jsonOutput && !*noProgress && *progressMode != "no" && (isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())), duration: *duration, budget: int64(*maxMiB) * speed.MiB / 2}
+		defer p.clear()
+		if !jsonOutput {
+			p.header()
+			p.status("   Retrieving network information...")
+		}
+		client := speed.NewClient()
+		var info *networkinfo.Info
+		found, infoErr := networkinfo.Lookup(ctx, client.HTTP, networkinfo.Endpoint)
+		if ctx.Err() != nil {
+			return speed.PublicError(ctx.Err())
+		}
+		if infoErr == nil {
+			info = &found
+			if options.Match.IP == "" {
+				options.Match.IP = found.IP
+			}
+			if options.Match.Province == "" {
+				options.Match.Province = found.Province
+			}
+			if options.Match.City == "" && (*province == "" || *province == found.Province) {
+				options.Match.City = found.City
+			}
+			if options.Match.Operator == "" {
+				options.Match.Operator = found.Operator
+			}
+		}
+		var server catalog.Server
+		var err error
+		if options.Auto {
+			if !jsonOutput {
+				p.status("   Selecting server...")
+			}
+			server, err = client.Match(ctx, options.Match, nil)
+		} else {
+			server, err = catalog.Find(options.ServerID)
+		}
+		if err != nil {
+			return speed.PublicError(err)
+		}
+		if !jsonOutput {
+			p.server(server, info)
+		}
+		var progress func(speed.Progress)
+		if !jsonOutput {
+			progress = p.progress
+		}
+		result, err := client.RunSelected(ctx, options, server, progress)
+		p.clear()
 		if err != nil {
 			return err
 		}
 		if !*noHistory {
 			if e := history.Save(result); e != nil {
-				fmt.Fprintln(os.Stderr, "历史保存失败:", e)
+				fmt.Fprintln(os.Stderr, "[warning] 历史保存失败:", e)
 			}
 		}
-		if *asJSON {
+		if jsonOutput {
+			if *format == "json" && !*asJSON {
+				return json.NewEncoder(os.Stdout).Encode(result)
+			}
 			return emit(result)
 		}
-		fmt.Printf("%s · %s\n%s\n下载 %.2f Mbps · 上传 %.2f Mbps\n流量 %.2f MiB · 会话已释放 %t\n", result.Server.Name, result.Path, result.Ping.Description(), result.Download.Mbps, result.Upload.Mbps, float64(result.Download.Bytes+result.Upload.Bytes)/float64(speed.MiB), result.Released)
+		p.complete(result)
 		return nil
 	case "select":
 		f := flag.NewFlagSet("select", flag.ContinueOnError)
@@ -108,7 +189,7 @@ func run(args []string) error {
 		city := f.String("city", "", "城市")
 		operator := f.String("operator", "", "运营商")
 		publicIP := f.String("ip", "", "公网 IP（可留空）")
-		network := f.Int("network", 5, "原版网络参数 4/5")
+		network := f.Int("network", 5, "选点网络参数 4/5")
 		if err := f.Parse(args[1:]); err != nil {
 			return err
 		}
