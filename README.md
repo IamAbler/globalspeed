@@ -1,156 +1,97 @@
 # GlobalSpeed
 
-跨平台网络测速工具，提供 Windows、Linux、macOS 桌面端和 CLI。使用本机 Go 核心直接连接测速节点，支持下载、上传、Ping 和本地历史记录。
+## 使用方法
 
-桌面使用 Wails v2、React 和 Fluent UI，采用中央 GO 按钮、紧凑的服务器信息和单/多连接切换；测速时显示弧形刻度与指针速度表，支持深浅主题。
+### 桌面端
 
-公网网络信息通过本机访问 `https://myip.ipip.net/json` 获取，显示的是出口公网 IP。获取失败不会阻止节点选择；自动匹配会使用已获取的 IP、地区和运营商作为提示。
+启动程序，等待自动选择节点后点击 **GO** 测速。可更换节点、调整测速参数、停止测试及查看历史记录。
 
-桌面默认窗口为 520×760，最小为 480×680，采用紧凑竖向比例。测速主页面随客户区高度调整尺寸；节点目录与历史页保留独立滚动。
+### CLI
 
-![GlobalSpeed desktop](docs/desktop-preview.png)
+```bash
+globalspeed                                  # 自动选择节点并测速
+globalspeed nodes                            # 查看节点及 Server ID
+globalspeed nodes --province 江苏 --operator 电信
+globalspeed -s 1503                          # 指定节点
+globalspeed --duration 5 --connections 2 --max-mib 64
+globalspeed -f json                          # JSON 输出
+globalspeed --progress no                    # 关闭实时进度
+globalspeed --no-history                     # 不保存本次历史
+globalspeed update                           # 更新节点目录
+globalspeed nodes --no-update                # 使用本地目录
+globalspeed select --province 江苏 --operator 电信
+globalspeed history                          # 查看历史记录
+globalspeed dns example.com                  # 查询 DNS
+globalspeed --help                           # 查看帮助
+```
 
-实时仪表使用 270° 分段刻度、200 ms 缓动跟随与 500 ms 阶段回针，带入场变形、刻度渐显及结束回收。最终测速数值和历史记录使用原始测量结果。实现说明见 [仪表动画](docs/gauge-animation.md)。
+Windows 使用 `globalspeed.exe`。按 Ctrl+C 停止测速。
 
-## 功能
+## 编译方法
 
-- 在线更新节点目录，按省份、运营商和关键词选择；内置加密快照含 606 个节点、31 个地区。
-- 下载与上传测速，可设置采样时长、并发连接和流量预算。
-- ICMP Ping 平均延迟与抖动；不可用时回退到 TCP。
-- 启动后自动匹配并显示测速节点，点击 GO 使用已选结果，也可手动换点。
-- 速度表下方先显示测速节点，再显示本地网络的公网 IP、运营商和地区，支持刷新。
-- 停止测试、JSON 输出、本机 DNS 查询。
-- 桌面与 CLI 共用本地历史，最多保留 100 条成功记录。
+### CLI
 
-## CLI
-
-需要 Go 1.25 或以上。
+需要 Go 1.25+。
 
 ```bash
 go build -o globalspeed ./cmd/globalspeed
-./globalspeed                        # 默认自动选择节点并测速
-./globalspeed -s 1503 --duration 5    # 指定节点
-./globalspeed -s 1503 -f json         # 紧凑 JSON
-./globalspeed --progress no          # 关闭进度
-./globalspeed update                 # 检查并更新加密节点目录
-./globalspeed nodes --path           # 显示目录缓存路径
-./globalspeed nodes --no-update      # 只读本地目录
-./globalspeed nodes --province 江苏 --operator 电信
-./globalspeed speed --auto --duration 5 --connections 2 --max-mib 64
-./globalspeed select --province 江苏 --operator 电信
-./globalspeed speed --server 1503 --duration 5 --connections 2 --max-mib 64
-./globalspeed speed --server 1503 --duration 5 --json
-./globalspeed dns example.com
-./globalspeed history
-./globalspeed history --path
 ```
 
-默认输出对齐的 Server、ISP、公网 IP、Idle Latency、Download、Upload 和 Packet Loss 摘要。TCP 回退时显示 TCP Failures。交互终端内显示单行速度与进度条，重定向输出时不使用回车覆盖或 ANSI 控制符；`--progress no` 可禁用进度。`-f json` 输出紧凑 JSON，`-f json-pretty` 和原有 `--json` 输出缩进 JSON，字段与单位保持原格式。
-
-Windows 下使用 `globalspeed.exe`。`--no-history` 可禁用本次历史保存，Ctrl+C 停止测试并释放会话。
-
-### 跨平台构建
+编译 Windows、Linux、macOS 的 amd64 / arm64 版本，需要 Python 3：
 
 ```bash
 python3 scripts/build_cli.py
 ```
 
-在 `build/bin/` 生成 Windows、Linux、macOS 的 amd64 和 arm64 CLI。
+输出目录：`build/bin/`。
 
-## 桌面开发
+### 桌面端
 
-需要 Go 1.25+、Node.js 22+ 和 Wails v2.15.0。
-
-```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
-cd frontend
-npm ci
-npm run build
-cd ..
-wails dev -tags desktop
-```
-
-生产构建：
-
-```bash
-wails build -tags desktop
-```
+需要 Go 1.25+、Node.js 22+ 和对应平台的依赖：
 
 | 平台 | 依赖 |
 | --- | --- |
 | Windows | WebView2 Runtime |
-| macOS | Xcode Command Line Tools、系统 WebKit |
+| macOS | Xcode Command Line Tools |
 | Linux | C 编译器、GTK 3、WebKitGTK 4.1、pkg-config |
 
-ICMP 测量需要系统 `ping`。Windows/macOS 通常已提供；Linux 可安装 `iputils-ping`，不可执行时会使用 TCP 回退。
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+npm --prefix frontend ci
+```
 
-Ubuntu/Debian 的 Linux 开发环境：
+在对应系统上编译：
 
 ```bash
+# Windows
+wails build -tags desktop
+
+# macOS（Intel / Apple Silicon）
+wails build -tags desktop -platform darwin/universal
+
+# Ubuntu / Debian
 sudo apt-get install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev iputils-ping
 wails build -tags desktop,webkit2_41
 ```
 
-桌面端在对应操作系统上构建。CI 使用固定的 Ubuntu 24.04 与 macOS 15 Intel runner；macOS 构建 Universal 应用，支持 Intel 和 Apple Silicon。[GitHub Actions](.github/workflows/build.yml) 配置了三个平台的桌面构建及六个 CLI 构建，产物可在 Actions 的 Artifacts 下载。
+输出目录：`build/bin/`。开发运行使用 `wails dev -tags desktop`；Linux 加上 `webkit2_41` 标签。
 
-## 测量口径
+## 默认存储位置
 
-- Ping 优先调用系统 ICMP 工具，每包 64 字节、超时 3 秒；支持快速 Ping 时发 10 包、间隔 200 ms，否则发 5 包。平均值来自成功响应，抖动为相邻成功响应差值的绝对值均值。
-- ICMP 平均值低于 0.1 ms 时使用 TCP 回退，5 次建连、间隔 50 ms，按整数毫秒统计。界面明确显示 ICMP/TCP，失败显示“—”；TUN 或透明代理仍可能影响 TCP 数据。
-- 桌面默认自动选点。匹配接口根据公网出口及可选省份/运营商返回候选，依次探测，选第一个符合条件的节点；全部不符合时选第一项。自动匹配不保证节点接受测速会话。
-- CLI 直接运行或运行 `speed` 默认自动选点，`--server` / `--server-id` / `-s` 指定节点。`select` 只选点、不测速。可传 `--province`、`--city`、`--operator`、`--ip` 和 `--network`（4 或 5，默认 5）；测速时优先使用显式提示，否则使用 IPIP 返回的信息。公网信息获取失败时留空，由匹配服务识别出口。
-- `--max-mib` 是上下行有效负载合计预算，下载、上传各分配一半，不包含延迟探测、协议及在途数据开销。
-- 上传仅统计服务器确认的完整请求；网络路径和节点负载会影响测量。
-- HTTP 客户端不使用系统 HTTP 代理，但仍受操作系统路由、TUN 和 VPN 影响。
-- 桌面启动及 CLI 的 nodes、speed、select 会检查节点目录更新，CLI 的 nodes / speed 支持 `--no-update`。内置快照为 2026-10-04，在线目录可能增减节点，节点也可能不可用。当前不支持 traceroute、游戏或视频体验测试。
+桌面端与 CLI 共用以下目录：
 
-## 节点目录缓存
-
-桌面和 CLI 共用加密目录，保存厂商原始密文，运行时才解密。下载目录须通过配置索引的 MD5 校验及内容校验，再替换缓存；更新失败保留已有目录，缓存无效时使用内置加密快照。
-
-默认路径与历史记录目录相同，文件名为 `serverlist.json`（内容为加密十六进制文本）：
-
-- Windows：`%AppData%\globalspeed\serverlist.json`
-- macOS：`~/Library/Application Support/globalspeed/serverlist.json`
-- Linux：`${XDG_CONFIG_HOME:-~/.config}/globalspeed/serverlist.json`
-
-用 `globalspeed nodes --path` 查看实际位置，`globalspeed update` 手动检查更新。更新检查有 10 秒总超时；测速仍由本机直连节点。
-
-## 历史记录
-
-桌面与 CLI 共用 `history.json`；完整测速成功才保存，失败或取消不保存。
-
-| 系统 | 默认位置 |
+| 系统 | 目录 |
 | --- | --- |
-| Windows | `%APPDATA%\globalspeed\history.json` |
-| Linux | `$XDG_CONFIG_HOME/globalspeed/history.json`，未设置时为 `~/.config/globalspeed/history.json` |
-| macOS | `~/Library/Application Support/globalspeed/history.json` |
+| Windows | `%APPDATA%\globalspeed\` |
+| macOS | `~/Library/Application Support/globalspeed/` |
+| Linux | `$XDG_CONFIG_HOME/globalspeed/`，未设置时为 `~/.config/globalspeed/` |
 
-用 `globalspeed history --path` 查询实际路径。
+- `history.json`：测速历史。
+- `serverlist.json`：加密节点目录。
 
-## 开发目录
-
-```text
-cmd/globalspeed/    CLI 入口
-internal/catalog/  节点目录
-internal/speed/    测速与自动选点
-internal/ping/     ICMP 与 TCP 回退
-internal/history/  本地历史
-frontend/          桌面界面与资源嵌入
-main_desktop.go    Wails 入口与事件绑定
-scripts/           构建及界面检查
-docs/              项目截图
-reverse/           分析文档与辅助脚本
-```
-
-## 检查
+查询实际路径：
 
 ```bash
-go test ./...
-go test -race ./...
-cd frontend
-npm ci
-npm run build
+globalspeed history --path
+globalspeed nodes --path
 ```
-
-Race 检查需要可用的 C 编译器。当前六个 CLI 和 Windows amd64 桌面程序已编译，核心测试与前端检查通过；Linux/macOS 桌面及原生窗口运行仍需对应环境验证。
